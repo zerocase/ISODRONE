@@ -36,7 +36,26 @@ void IsoVoice::pitchWheelMoved (int newPitchWheelValue)
 
 }
 
+void IsoVoice::prepareToPlay (double sampleRate, int samplesPerBlock, int outputChannels)
+{
+    juce::dsp::ProcessSpec spec;
+    spec.maximumBlockSize = samplesPerBlock;
+    spec.sampleRate = sampleRate;
+    spec.numChannels = outputChannels;
+
+    osc.prepare (spec);
+    gain.prepare (spec);
+
+
+    osc.setFrequency (220.0f);
+    gain.setGainLinear (0.01f);
+
+    isPrepared = true;
+}
+
 void IsoVoice::renderNextBlock (juce::AudioBuffer< float > &outputBuffer, int startSample, int numSamples)
 {
-
+    juce::dsp::AudioBlock<float> audioBlock { outputBuffer };
+    osc.process (juce::dsp::ProcessContextReplacing<float> (audioBlock));
+    gain.process (juce::dsp::ProcessContextReplacing<float> (audioBlock));
 }

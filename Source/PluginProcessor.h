@@ -58,13 +58,6 @@ public:
 
 private:
     juce::Synthesiser iso;
-    //SINE
-    //juce::dsp::Oscillator<float> osc { [](float x) { return std::sin (x); }};
-  
-    //SAW
-    /*juce::dsp::Oscillator<float> osc { [](float x) { return x / juce::MathConstants<float>::pi; }};
-    
-    juce::dsp::Gain<float> gain;*/
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ISODRONEAudioProcessor)
 };

@@ -21,10 +21,7 @@ ISODRONEAudioProcessor::ISODRONEAudioProcessor()
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
 #endif
-                     )/*,
-      parameters (*this, nullptr, "PARAMETERS", {
-          std::make_unique<juce::AudioParameterFloat>("gain", "Gain", 0.0f, 0.1f, 0.01f)
-      })*/
+                     )
 {
     iso.addSound (new IsoSound());
     iso.addVoice (new IsoVoice());
@@ -100,18 +97,13 @@ void ISODRONEAudioProcessor::changeProgramName (int index, const juce::String& n
 void ISODRONEAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     iso.setCurrentPlaybackSampleRate (sampleRate);
-
-
-/*   juce::dsp::ProcessSpec spec;
-    spec.maximumBlockSize = samplesPerBlock;
-    spec.sampleRate = sampleRate;
-    spec.numChannels = getTotalNumOutputChannels();
-
-    osc.prepare (spec);
-    gain.prepare (spec);
-
-
-    osc.setFrequency (220.0f);*/ 
+    for (int i = 0; i < iso.getNumVoices(); i++)
+    {
+        if (auto voice = dynamic_cast<IsoVoice*>(iso.getVoice(i)))
+        {
+            voice->prepareToPlay (sampleRate, samplesPerBlock, getTotalNumOutputChannels());
+        }
+    }
 }
 
 void ISODRONEAudioProcessor::releaseResources()
@@ -167,13 +159,6 @@ void ISODRONEAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         }
     }
     iso.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
-    //Gain fix
-    /*float currentGain = *parameters.getRawParameterValue("gain");
-    gain.setGainLinear (currentGain);
-
-    juce::dsp::AudioBlock<float> audioBlock { buffer };
-    osc.process (juce::dsp::ProcessContextReplacing<float> (audioBlock));
-    gain.process (juce::dsp::ProcessContextReplacing<float> (audioBlock));*/
 }
 
 //==============================================================================

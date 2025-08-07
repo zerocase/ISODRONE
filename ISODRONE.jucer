@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="vIswcp" name="ISODRONE" projectType="audioplug" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1">
+              addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1"
+              pluginCharacteristicsValue="pluginIsSynth,pluginWantsMidiIn"
+              pluginFormats="buildLV2,buildStandalone,buildVST3">
   <MAINGROUP id="pq2wvQ" name="ISODRONE">
     <GROUP id="{C9056C09-DE16-D82D-D7AB-F8E6161CF9F0}" name="Source">
       <FILE id="ICgJct" name="IsoSound.cpp" compile="1" resource="0" file="Source/IsoSound.cpp"/>
