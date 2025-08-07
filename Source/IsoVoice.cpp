@@ -18,12 +18,13 @@ bool IsoVoice::canPlaySound (juce::SynthesiserSound* sound)
 
 void IsoVoice::startNote (int midiNoteNumber, float velocity, juce::SynthesiserSound *sound, int currentPitchWheelPosition)
 {
-
+    osc.setFrequency (juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber));
+    adsr.noteOn();
 }
 
 void IsoVoice::stopNote (float velocity, bool allowTailOff)
 {
-
+    adsr.noteOff();
 }
 
 void IsoVoice::controllerMoved (int controllerNumber, int newControllerValue)
@@ -38,6 +39,7 @@ void IsoVoice::pitchWheelMoved (int newPitchWheelValue)
 
 void IsoVoice::prepareToPlay (double sampleRate, int samplesPerBlock, int outputChannels)
 {
+    adsr.setSampleRate (sampleRate);
     juce::dsp::ProcessSpec spec;
     spec.maximumBlockSize = samplesPerBlock;
     spec.sampleRate = sampleRate;
@@ -47,15 +49,18 @@ void IsoVoice::prepareToPlay (double sampleRate, int samplesPerBlock, int output
     gain.prepare (spec);
 
 
-    osc.setFrequency (220.0f);
-    gain.setGainLinear (0.01f);
+    gain.setGainLinear (0.03f);
 
     isPrepared = true;
 }
 
 void IsoVoice::renderNextBlock (juce::AudioBuffer< float > &outputBuffer, int startSample, int numSamples)
 {
+    jassert (isPrepared);
+
     juce::dsp::AudioBlock<float> audioBlock { outputBuffer };
     osc.process (juce::dsp::ProcessContextReplacing<float> (audioBlock));
     gain.process (juce::dsp::ProcessContextReplacing<float> (audioBlock));
+
+    adsr.applyEnvelopeToBuffer (outputBuffer, startSample, numSamples);
 }
