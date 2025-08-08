@@ -6,6 +6,8 @@
               pluginFormats="buildLV2,buildStandalone,buildVST3">
   <MAINGROUP id="pq2wvQ" name="ISODRONE">
     <GROUP id="{C9056C09-DE16-D82D-D7AB-F8E6161CF9F0}" name="Source">
+      <FILE id="ECHwnN" name="VowelFilter.cpp" compile="1" resource="0" file="Source/VowelFilter.cpp"/>
+      <FILE id="pFqpBN" name="VowelFilter.h" compile="0" resource="0" file="Source/VowelFilter.h"/>
       <FILE id="ICgJct" name="IsoSound.cpp" compile="1" resource="0" file="Source/IsoSound.cpp"/>
       <FILE id="WV5QQp" name="IsoSound.h" compile="0" resource="0" file="Source/IsoSound.h"/>
       <FILE id="eq77D6" name="IsoVoice.cpp" compile="1" resource="0" file="Source/IsoVoice.cpp"/>

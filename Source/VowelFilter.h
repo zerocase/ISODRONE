@@ -28,15 +28,15 @@ private:
     static constexpr float FORMANT_2_FREQ = 1090.0f;
     static constexpr float FORMANT_3_FREQ = 2440.0f;
     
-    // Static Q values for each formant
-    static constexpr float FORMANT_1_Q = 6.0f;
-    static constexpr float FORMANT_2_Q = 8.0f;
-    static constexpr float FORMANT_3_Q = 10.0f;
+    // Static bandwidth values (instead of Q)
+    static constexpr float FORMANT_1_BW = 80.0f;
+    static constexpr float FORMANT_2_BW = 90.0f;
+    static constexpr float FORMANT_3_BW = 120.0f;
     
-    // Static gain values (in linear, not dB)
-    static constexpr float FORMANT_1_GAIN = 1.0f;    // 0 dB
-    static constexpr float FORMANT_2_GAIN = 0.5f;    // -6 dB
-    static constexpr float FORMANT_3_GAIN = 0.25f;   // -12 dB
+    // Static gain values (linear)
+    static constexpr float FORMANT_1_GAIN = 4.0f;
+    static constexpr float FORMANT_2_GAIN = 2.0f;
+    static constexpr float FORMANT_3_GAIN = 1.0f;
     
     // Filter bank - 3 formants per channel
     std::vector<std::unique_ptr<juce::IIRFilter>> formant1Filters;
@@ -50,5 +50,5 @@ private:
     double sampleRate;
     int numChannels;
     
-    void createBandpassFilter(juce::IIRFilter* filter, float frequency, float q, float gain);
+    void createBandpassFilter(juce::IIRFilter* filter, float frequency, float bandwidth, float gain);
 };

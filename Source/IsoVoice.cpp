@@ -49,7 +49,7 @@ void IsoVoice::prepareToPlay (double sampleRate, int samplesPerBlock, int output
     gain.prepare (spec);
 
 
-    gain.setGainLinear (0.03f);
+    gain.setGainLinear (0.5f);
 
     isPrepared = true;
 }

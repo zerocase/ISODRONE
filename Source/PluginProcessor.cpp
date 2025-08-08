@@ -105,12 +105,15 @@ void ISODRONEAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
             voice->prepareToPlay (sampleRate, samplesPerBlock, getTotalNumOutputChannels());
         }
     }
+
+    vowelFilter.prepareToPlay(sampleRate, samplesPerBlock);
     // Start a continuous note
     iso.noteOn(1, 60, 1.0f); // channel 1, middle C, full velocity
 }
 
 void ISODRONEAudioProcessor::releaseResources()
-{
+{   
+    vowelFilter.reset();
     // When playback stops, you can use this as an opportunity to free up any
     // spare memory, etc.
 }
@@ -162,6 +165,8 @@ void ISODRONEAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         }
     }
     iso.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
+
+    vowelFilter.processBlock(buffer);
 }
 
 //==============================================================================

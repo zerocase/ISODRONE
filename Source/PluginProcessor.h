@@ -11,6 +11,7 @@
 #include <JuceHeader.h>
 #include "IsoVoice.h"
 #include "IsoSound.h"
+#include "VowelFilter.h"
 
 //==============================================================================
 /**
@@ -59,6 +60,7 @@ public:
     
 private:
     juce::Synthesiser iso;
+    VowelFilter vowelFilter;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ISODRONEAudioProcessor)
 };
