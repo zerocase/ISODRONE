@@ -10,9 +10,24 @@
 
 #include "VowelFilter.h"
 
+// Formant data for each vowel (frequencies in Hz, bandwidths in Hz, gains linear)
+const VowelFilter::FormantData VowelFilter::vowelFormants[NumVowels] = {
+    // A vowel
+    { 730.0f, 1090.0f, 2440.0f, 80.0f, 90.0f, 120.0f, 1.5f, 1.0f, 0.5f },
+    // E vowel  
+    { 530.0f, 1840.0f, 2480.0f, 80.0f, 90.0f, 120.0f, 1.5f, 1.2f, 0.6f },
+    // I vowel
+    { 270.0f, 2290.0f, 3010.0f, 40.0f, 90.0f, 120.0f, 1.2f, 1.5f, 0.8f },
+    // O vowel
+    { 570.0f, 840.0f, 2410.0f, 80.0f, 80.0f, 120.0f, 1.5f, 0.8f, 0.5f },
+    // U vowel
+    { 440.0f, 1020.0f, 2240.0f, 80.0f, 80.0f, 120.0f, 1.2f, 0.6f, 0.4f }
+};
+
 VowelFilter::VowelFilter()
     : sampleRate(44100.0)
     , numChannels(2)
+    , currentVowel(E)
 {
 }
 
@@ -41,13 +56,8 @@ void VowelFilter::prepareToPlay(double newSampleRate, int samplesPerBlock)
         formant3Filters.push_back(std::make_unique<juce::IIRFilter>());
     }
     
-    // Configure all filters with static "A" vowel formants
-    for (int channel = 0; channel < numChannels; ++channel)
-    {
-        createBandpassFilter(formant1Filters[channel].get(), FORMANT_1_FREQ, FORMANT_1_BW, FORMANT_1_GAIN);
-        createBandpassFilter(formant2Filters[channel].get(), FORMANT_2_FREQ, FORMANT_2_BW, FORMANT_2_GAIN);
-        createBandpassFilter(formant3Filters[channel].get(), FORMANT_3_FREQ, FORMANT_3_BW, FORMANT_3_GAIN);
-    }
+    // Configure filters with current vowel formants
+    updateFilters();
     
     // Prepare temporary buffer for parallel processing
     tempBuffer.setSize(numChannels, samplesPerBlock, false, true, true);
@@ -132,6 +142,34 @@ void VowelFilter::reset()
         
     for (auto& filter : formant3Filters)
         if (filter) filter->reset();
+}
+
+void VowelFilter::setVowelType(VowelType vowel)
+{
+    if (currentVowel != vowel)
+    {
+        currentVowel = vowel;
+        updateFilters();
+    }
+}
+
+void VowelFilter::updateFilters()
+{
+    // Get current formant data
+    const FormantData& formant = vowelFormants[currentVowel];
+    
+    // Update each formant filter for all channels
+    for (int channel = 0; channel < static_cast<int>(formant1Filters.size()); ++channel)
+    {
+        if (formant1Filters[channel])
+            createBandpassFilter(formant1Filters[channel].get(), formant.f1, formant.bw1, formant.gain1);
+            
+        if (formant2Filters[channel])
+            createBandpassFilter(formant2Filters[channel].get(), formant.f2, formant.bw2, formant.gain2);
+            
+        if (formant3Filters[channel])
+            createBandpassFilter(formant3Filters[channel].get(), formant.f3, formant.bw3, formant.gain3);
+    }
 }
 
 void VowelFilter::createBandpassFilter(juce::IIRFilter* filter, float frequency, float bandwidth, float gain)
