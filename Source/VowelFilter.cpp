@@ -119,7 +119,7 @@ void VowelFilter::processBlock(juce::AudioBuffer<float>& buffer)
             float filteredSample = formant1Data[sample] + formant2Data[sample] + formant3Data[sample];
             
             // Apply overall gain scaling (conservative scaling to prevent clipping)
-            filteredSample *= 0.2f;
+            filteredSample *= 0.5f;
             
             // Soft clipping for safety
             filteredSample = juce::jlimit(-0.95f, 0.95f, filteredSample);

@@ -230,7 +230,7 @@ void IsoVoice::prepareToPlay (double sampleRate, int samplesPerBlock, int output
     spec.numChannels = outputChannels;
     osc.prepare (spec);
     gain.prepare (spec);
-    gain.setGainLinear (1.5f);
+    gain.setGainLinear (1.0f);
     
     // NEW: Prepare glottal oscillator
     glottalOsc.prepareToPlay(sampleRate, samplesPerBlock);
