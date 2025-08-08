@@ -151,22 +151,30 @@ void ISODRONEAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
     
-
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
+    // NEW: Get oscillator type and glottal parameters
+    auto oscType = apvts.getRawParameterValue("OSC")->load();
+    auto openQuotient = apvts.getRawParameterValue("OPENQUOT")->load();
+    auto asymmetry = apvts.getRawParameterValue("ASYMMETRY")->load();
+    auto breathiness = apvts.getRawParameterValue("BREATHINESS")->load();
+    auto tenseness = apvts.getRawParameterValue("TENSENESS")->load();
     
     for (int i = 0; i < iso.getNumVoices(); ++i)
     {
-        if (auto voice = dynamic_cast<juce::SynthesiserVoice*>(iso.getVoice(i)))
+        if (auto voice = dynamic_cast<IsoVoice*>(iso.getVoice(i)))
         {
-            //OSC controls
-            //ADSR
-            //LFO
+            // EXISTING: OSC controls, ADSR, LFO (your comment)
+            
+            // NEW: Set oscillator type and glottal parameters
+            voice->setOscillatorType(static_cast<int>(oscType));
+            voice->setGlottalParams(openQuotient, asymmetry, breathiness, tenseness);
         }
     }
+    
+    // EXISTING: (no changes)
     iso.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
-
     vowelFilter.processBlock(buffer);
 }
 
@@ -206,15 +214,18 @@ juce::AudioProcessorValueTreeState::ParameterLayout ISODRONEAudioProcessor::crea
 {
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
 
-    // OSC select
-    params.push_back (std::make_unique<juce::AudioParameterChoice> ("OSC", "Oscillator", juce::StringArray { "Saw", "LF" }, 0));
-
-
-    //ADSR
+    // EXISTING PARAMETERS (no changes)
+    params.push_back (std::make_unique<juce::AudioParameterChoice> ("OSC", "Oscillator", juce::StringArray { "Saw", "Glottal" }, 1));
     params.push_back(std::make_unique<juce::AudioParameterFloat> ("ATTACK", "Attack", juce::NormalisableRange<float> {0.1f, 1.0f}, 0.1f));
     params.push_back(std::make_unique<juce::AudioParameterFloat> ("DECAY", "Decay", juce::NormalisableRange<float> {0.1f, 1.0f}, 0.1f));
     params.push_back(std::make_unique<juce::AudioParameterFloat> ("SUSTAIN", "Sustain", juce::NormalisableRange<float> {0.1f, 1.0f}, 1.0f));
     params.push_back(std::make_unique<juce::AudioParameterFloat> ("RELEASE", "Release", juce::NormalisableRange<float> {0.1f, 3.0f}, 0.4f));
+
+    // NEW PARAMETERS for glottal oscillator (removed OSCMIX)
+    params.push_back(std::make_unique<juce::AudioParameterFloat> ("OPENQUOT", "Open Quotient", juce::NormalisableRange<float> {0.3f, 0.7f}, 0.6f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat> ("ASYMMETRY", "Asymmetry", juce::NormalisableRange<float> {0.1f, 2.0f}, 0.7f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat> ("BREATHINESS", "Breathiness", juce::NormalisableRange<float> {0.0f, 1.0f}, 0.1f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat> ("TENSENESS", "Tenseness", juce::NormalisableRange<float> {0.0f, 1.0f}, 0.8f));
 
     return { params.begin(), params.end() };
 }
