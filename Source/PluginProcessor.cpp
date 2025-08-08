@@ -103,12 +103,13 @@ void ISODRONEAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
         if (auto voice = dynamic_cast<IsoVoice*>(iso.getVoice(i)))
         {
             voice->prepareToPlay (sampleRate, samplesPerBlock, getTotalNumOutputChannels());
+            voice->setUseVoiceMapping(true);
         }
     }
 
     vowelFilter.prepareToPlay(sampleRate, samplesPerBlock);
     // Start a continuous note
-    iso.noteOn(1, 60, 1.0f); // channel 1, middle C, full velocity
+    iso.noteOn(1, 30, 1.0f); // channel 1, middle C, full velocity
 }
 
 void ISODRONEAudioProcessor::releaseResources()
