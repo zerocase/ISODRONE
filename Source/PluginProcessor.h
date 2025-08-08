@@ -54,8 +54,9 @@ public:
     //==============================================================================
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
-    //juce::AudioProcessorValueTreeState parameters;
-
+    juce::AudioProcessorValueTreeState apvts;
+    static juce::AudioProcessorValueTreeState::ParameterLayout createParams();
+    
 private:
     juce::Synthesiser iso;
     //==============================================================================

@@ -21,7 +21,8 @@ ISODRONEAudioProcessor::ISODRONEAudioProcessor()
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
 #endif
-                     )
+                     ),
+        apvts (*this, nullptr, "Parameters", createParams())  // Add this line
 {
     iso.addSound (new IsoSound());
     iso.addVoice (new IsoVoice());
@@ -104,6 +105,8 @@ void ISODRONEAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
             voice->prepareToPlay (sampleRate, samplesPerBlock, getTotalNumOutputChannels());
         }
     }
+    // Start a continuous note
+    iso.noteOn(1, 60, 1.0f); // channel 1, middle C, full velocity
 }
 
 void ISODRONEAudioProcessor::releaseResources()
@@ -191,4 +194,21 @@ void ISODRONEAudioProcessor::setStateInformation (const void* data, int sizeInBy
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new ISODRONEAudioProcessor();
+}
+
+juce::AudioProcessorValueTreeState::ParameterLayout ISODRONEAudioProcessor::createParams()
+{
+    std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
+
+    // OSC select
+    params.push_back (std::make_unique<juce::AudioParameterChoice> ("OSC", "Oscillator", juce::StringArray { "Saw", "LF" }, 0));
+
+
+    //ADSR
+    params.push_back(std::make_unique<juce::AudioParameterFloat> ("ATTACK", "Attack", juce::NormalisableRange<float> {0.1f, 1.0f}, 0.1f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat> ("DECAY", "Decay", juce::NormalisableRange<float> {0.1f, 1.0f}, 0.1f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat> ("SUSTAIN", "Sustain", juce::NormalisableRange<float> {0.1f, 1.0f}, 1.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat> ("RELEASE", "Release", juce::NormalisableRange<float> {0.1f, 3.0f}, 0.4f));
+
+    return { params.begin(), params.end() };
 }

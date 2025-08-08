@@ -58,7 +58,7 @@ void IsoVoice::renderNextBlock (juce::AudioBuffer< float > &outputBuffer, int st
 {
     jassert (isPrepared);
 
-    juce::dsp::AudioBlock<float> audioBlock { outputBuffer };
+    juce::dsp::AudioBlock<float> audioBlock { outputBuffer, (size_t)startSample };
     osc.process (juce::dsp::ProcessContextReplacing<float> (audioBlock));
     gain.process (juce::dsp::ProcessContextReplacing<float> (audioBlock));
 
