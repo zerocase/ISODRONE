@@ -98,7 +98,7 @@ private:
     juce::dsp::Gain<float> gain;
     bool isPrepared { false };
     
-    VoiceType voiceType = FULL_RANGE;
+    VoiceType voiceType = BASS;
     bool useVoiceMapping = true;
     
     // NEW: Glottal oscillator and selection
