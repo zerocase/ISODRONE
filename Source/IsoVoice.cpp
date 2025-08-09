@@ -189,6 +189,11 @@ void IsoVoice::startNote (int midiNoteNumber, float velocity, juce::SynthesiserS
 void IsoVoice::stopNote (float velocity, bool allowTailOff)
 {
     adsr.noteOff();
+
+    if (! allowTailOff || ! adsr.isActive())
+    {
+        clearCurrentNote();
+    }
 }
 
 void IsoVoice::controllerMoved (int controllerNumber, int newControllerValue)
@@ -249,41 +254,60 @@ void IsoVoice::prepareToPlay (double sampleRate, int samplesPerBlock, int output
     isPrepared = true;
 }
 
+void IsoVoice::updateADSR(const float attack, const float decay, const float sustain, const float release)
+{
+    adsrParams.attack = attack;
+    adsrParams.decay = decay;
+    adsrParams.sustain = sustain;
+    adsrParams.release = release;
+
+    adsr.setParameters (adsrParams);
+}
+
+
+
 void IsoVoice::renderNextBlock (juce::AudioBuffer< float > &outputBuffer, int startSample, int numSamples)
 {
     jassert (isPrepared);
+    if (! isVoiceActive())
+        return;
+    
+    isoBuffer.setSize (outputBuffer.getNumChannels(), numSamples, false, false, true);
+    isoBuffer.clear();
     
     if (oscillatorType == 0) // Sawtooth oscillator
     {
-        // EXISTING: Process primary oscillator
-        juce::dsp::AudioBlock<float> audioBlock { outputBuffer, (size_t)startSample };
+        juce::dsp::AudioBlock<float> audioBlock { isoBuffer };
         osc.process (juce::dsp::ProcessContextReplacing<float> (audioBlock));
-        
-        // Apply gain and ADSR
-        gain.process (juce::dsp::ProcessContextReplacing<float> (audioBlock));
-        adsr.applyEnvelopeToBuffer (outputBuffer, startSample, numSamples);
     }
     else // Glottal oscillator
     {
-        // Clear buffer first
-        for (int channel = 0; channel < outputBuffer.getNumChannels(); ++channel)
-            outputBuffer.clear(channel, startSample, numSamples);
-        
-        // Generate glottal samples
-        for (int sample = startSample; sample < startSample + numSamples; ++sample)
+        // Generate glottal samples directly into isoBuffer
+        for (int sample = 0; sample < numSamples; ++sample) // Note: 0 to numSamples
         {
             float glottalSample = glottalOsc.getNextSample();
-            
-            for (int channel = 0; channel < outputBuffer.getNumChannels(); ++channel)
+            for (int channel = 0; channel < isoBuffer.getNumChannels(); ++channel)
             {
-                outputBuffer.setSample(channel, sample, glottalSample);
+                isoBuffer.setSample(channel, sample, glottalSample);
             }
         }
-        
-        // Apply gain and ADSR
-        juce::dsp::AudioBlock<float> audioBlock { outputBuffer, (size_t)startSample };
-        gain.process (juce::dsp::ProcessContextReplacing<float> (audioBlock));
-        adsr.applyEnvelopeToBuffer (outputBuffer, startSample, numSamples);
+    }
+    
+    // Common processing for both oscillator types
+    juce::dsp::AudioBlock<float> audioBlock { isoBuffer };
+    gain.process (juce::dsp::ProcessContextReplacing<float> (audioBlock));
+    adsr.applyEnvelopeToBuffer(isoBuffer, 0, numSamples); // Apply to isoBuffer with offset 0
+    
+
+    /*if (startSample != 0)
+        jassertfalse;*/
+
+    // Copy processed audio to output buffer
+    for (int channel = 0; channel < outputBuffer.getNumChannels(); ++channel)
+    {
+        outputBuffer.addFrom(channel, startSample, isoBuffer, channel, 0, numSamples);
+        if (!adsr.isActive())
+            clearCurrentNote();
     }
 }
 

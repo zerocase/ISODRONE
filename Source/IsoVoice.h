@@ -89,11 +89,14 @@ public:
     // NEW: Oscillator selection and glottal controls
     void setOscillatorType(int oscType);     // 0 = sawtooth, 1 = glottal
     void setGlottalParams(float oq, float alpha, float breath, float tension);
+    void updateADSR(const float attack, const float decay, const float sustain, const float release);
 
 private:
     // Existing members (no changes)
     juce::ADSR adsr;
     juce::ADSR::Parameters adsrParams;
+    juce::AudioBuffer<float> isoBuffer;
+
     juce::dsp::Oscillator<float> osc { [](float x) { return x / juce::MathConstants<float>::pi; }};
     juce::dsp::Gain<float> gain;
     bool isPrepared { false };

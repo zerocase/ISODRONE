@@ -155,12 +155,17 @@ void ISODRONEAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         buffer.clear (i, 0, buffer.getNumSamples());
 
     // NEW: Get oscillator type and glottal parameters
-    auto oscType = apvts.getRawParameterValue("OSC")->load();
-    auto openQuotient = apvts.getRawParameterValue("OPENQUOT")->load();
-    auto asymmetry = apvts.getRawParameterValue("ASYMMETRY")->load();
-    auto breathiness = apvts.getRawParameterValue("BREATHINESS")->load();
-    auto tenseness = apvts.getRawParameterValue("TENSENESS")->load();
-    
+    auto& oscType = *apvts.getRawParameterValue("OSC");
+    auto& openQuotient = *apvts.getRawParameterValue("OPENQUOT");
+    auto& asymmetry = *apvts.getRawParameterValue("ASYMMETRY");
+    auto& breathiness = *apvts.getRawParameterValue("BREATHINESS");
+    auto& tenseness = *apvts.getRawParameterValue("TENSENESS");
+
+    auto& attack = *apvts.getRawParameterValue("ATTACK");
+    auto& decay = *apvts.getRawParameterValue("DECAY");
+    auto& sustain = *apvts.getRawParameterValue("SUSTAIN");
+    auto& release = *apvts.getRawParameterValue("RELEASE");
+
     for (int i = 0; i < iso.getNumVoices(); ++i)
     {
         if (auto voice = dynamic_cast<IsoVoice*>(iso.getVoice(i)))
@@ -169,11 +174,14 @@ void ISODRONEAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
             
             // NEW: Set oscillator type and glottal parameters
             voice->setOscillatorType(static_cast<int>(oscType));
-            voice->setGlottalParams(openQuotient, asymmetry, breathiness, tenseness);
+            voice->setGlottalParams(openQuotient.load(), asymmetry.load(), breathiness.load(), tenseness.load());
+            voice->updateADSR(attack.load(), decay.load(), sustain.load(), release.load());
         }
     }
+    for (const juce::MidiMessageMetadata metadata : midiMessages)
+            if (metadata.numBytes == 3)
+                juce::Logger::writeToLog ("TimeStamp: " + juce::String (metadata.getMessage().getTimeStamp()));
     
-    // EXISTING: (no changes)
     iso.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
     vowelFilter.processBlock(buffer);
 }
@@ -221,7 +229,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout ISODRONEAudioProcessor::crea
     params.push_back(std::make_unique<juce::AudioParameterFloat> ("SUSTAIN", "Sustain", juce::NormalisableRange<float> {0.1f, 1.0f}, 1.0f));
     params.push_back(std::make_unique<juce::AudioParameterFloat> ("RELEASE", "Release", juce::NormalisableRange<float> {0.1f, 3.0f}, 0.4f));
 
-    // NEW PARAMETERS for glottal oscillator (removed OSCMIX)
+    // NEW PARAMETERS for glottal oscillator
     params.push_back(std::make_unique<juce::AudioParameterFloat> ("OPENQUOT", "Open Quotient", juce::NormalisableRange<float> {0.3f, 0.7f}, 0.6f));
     params.push_back(std::make_unique<juce::AudioParameterFloat> ("ASYMMETRY", "Asymmetry", juce::NormalisableRange<float> {0.1f, 2.0f}, 0.7f));
     params.push_back(std::make_unique<juce::AudioParameterFloat> ("BREATHINESS", "Breathiness", juce::NormalisableRange<float> {0.0f, 1.0f}, 0.1f));
