@@ -1,7 +1,7 @@
 /*
   ==============================================================================
 
-    This file contains the basic framework code for a JUCE plugin editor.
+    PluginEditor.cpp - Back to original structure with consolidated oscillator
 
   ==============================================================================
 */
@@ -10,13 +10,10 @@
 #include "PluginEditor.h"
 
 //==============================================================================
-ISODRONEAudioProcessorEditor::ISODRONEAudioProcessorEditor (ISODRONEAudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor (p), adsr(audioProcessor.apvts)
+ISODRONEAudioProcessorEditor::ISODRONEAudioProcessorEditor(ISODRONEAudioProcessor& p)
+    : AudioProcessorEditor(&p), audioProcessor(p), osc(audioProcessor.apvts, "OSC1WAVETYPE"), adsr(audioProcessor.apvts)
 {
-    setSize (600, 500);  // Made larger
-    
-    // Oscillator attachment
-    oscSelAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(audioProcessor.apvts, "OSC", oscSelector);
+    setSize(600, 650);
     
     // Glottal parameter attachments
     openQuotientAttachment = std::make_unique<SliderAttachment>(audioProcessor.apvts, "OPENQUOT", openQuotientSlider);
@@ -24,20 +21,15 @@ ISODRONEAudioProcessorEditor::ISODRONEAudioProcessorEditor (ISODRONEAudioProcess
     breathinessAttachment = std::make_unique<SliderAttachment>(audioProcessor.apvts, "BREATHINESS", breathinessSlider);
     tensenessAttachment = std::make_unique<SliderAttachment>(audioProcessor.apvts, "TENSENESS", tensenessSlider);
     
-    
     // Setup glottal parameter sliders
     setGlottalParams(openQuotientSlider);
     setGlottalParams(asymmetrySlider);
     setGlottalParams(breathinessSlider);
     setGlottalParams(tensenessSlider);
     
-    // Setup oscillator selector
-    oscSelector.addItem("Saw", 1);
-    oscSelector.addItem("Glottal", 2);
-    oscSelector.setSelectedId(2);  // Set default to Glottal
-    addAndMakeVisible(oscSelector);
-    
-    addAndMakeVisible (adsr);
+    // Add components
+    addAndMakeVisible(osc);
+    addAndMakeVisible(adsr);
 
     // Setup glottal parameter labels
     openQuotientLabel.setText("Open Quotient", juce::dontSendNotification);
@@ -55,11 +47,6 @@ ISODRONEAudioProcessorEditor::ISODRONEAudioProcessorEditor (ISODRONEAudioProcess
     tensenessLabel.setText("Tenseness", juce::dontSendNotification);
     tensenessLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(tensenessLabel);
-    
-    // Oscillator label
-    oscLabel.setText("Oscillator", juce::dontSendNotification);
-    oscLabel.setJustificationType(juce::Justification::centredLeft);
-    addAndMakeVisible(oscLabel);
 }
 
 ISODRONEAudioProcessorEditor::~ISODRONEAudioProcessorEditor()
@@ -67,57 +54,61 @@ ISODRONEAudioProcessorEditor::~ISODRONEAudioProcessorEditor()
 }
 
 //==============================================================================
-void ISODRONEAudioProcessorEditor::paint (juce::Graphics& g)
+void ISODRONEAudioProcessorEditor::paint(juce::Graphics& g)
 {
-    g.fillAll (juce::Colours::black);
+    g.fillAll(juce::Colours::black);
 }
 
 void ISODRONEAudioProcessorEditor::resized()
 {
     auto bounds = getLocalBounds().reduced(20, 20);
-    const auto padding = 15;
     
-    // Oscillator selector at top
-    juce::Rectangle<int> oscArea = bounds.removeFromTop(50);
-    oscLabel.setBounds(oscArea.getX(), oscArea.getY(), 80, 20);
-    oscSelector.setBounds(oscArea.getX() + 85, oscArea.getY(), 150, 30);
-
-    // Add some space
+    // Give oscillator component enough space and make sure it's properly sized
+    auto oscArea = bounds.removeFromTop(80);  // Plenty of space
+    osc.setBounds(oscArea);  // Use the full area, let the component handle internal layout
+    
+    DBG("Oscillator area: " << oscArea.toString());
+    
+    // Add gap
     bounds.removeFromTop(20);
     
-    // ADSR section - give it specific bounds instead of the entire area
-    juce::Rectangle<int> adsrArea = bounds.removeFromTop(200);
+    // Rest of layout...
+    auto adsrArea = bounds.removeFromTop(200);
     adsr.setBounds(adsrArea);
-
-    // Add some space
+    
+    // Glottal parameters...
     bounds.removeFromTop(20);
-
-    // Glottal parameter sliders with labels
-    const auto glottalSliderHeight = 40;
-    const auto glottalLabelHeight = 20;
-    const auto glottalSpacing = 10;
-    const auto totalGlottalHeight = glottalSliderHeight + glottalLabelHeight + glottalSpacing;
+    
+    const auto sliderHeight = 60;  // More space for each slider+label combo
     
     // Open Quotient
-    openQuotientLabel.setBounds(bounds.getX(), bounds.getY(), bounds.getWidth(), glottalLabelHeight);
-    openQuotientSlider.setBounds(bounds.getX(), bounds.getY() + glottalLabelHeight, bounds.getWidth(), glottalSliderHeight);
+    auto openQuotArea = bounds.removeFromTop(sliderHeight);
+    auto openLabelArea = openQuotArea.removeFromTop(20);
+    openQuotientLabel.setBounds(openLabelArea);
+    openQuotientSlider.setBounds(openQuotArea);
     
-    // Asymmetry
-    asymmetryLabel.setBounds(bounds.getX(), bounds.getY() + totalGlottalHeight, bounds.getWidth(), glottalLabelHeight);
-    asymmetrySlider.setBounds(bounds.getX(), bounds.getY() + totalGlottalHeight + glottalLabelHeight, bounds.getWidth(), glottalSliderHeight);
+    // Asymmetry  
+    auto asymmetryArea = bounds.removeFromTop(sliderHeight);
+    auto asymLabelArea = asymmetryArea.removeFromTop(20);
+    asymmetryLabel.setBounds(asymLabelArea);
+    asymmetrySlider.setBounds(asymmetryArea);
     
     // Breathiness
-    breathinessLabel.setBounds(bounds.getX(), bounds.getY() + 2 * totalGlottalHeight, bounds.getWidth(), glottalLabelHeight);
-    breathinessSlider.setBounds(bounds.getX(), bounds.getY() + 2 * totalGlottalHeight + glottalLabelHeight, bounds.getWidth(), glottalSliderHeight);
+    auto breathArea = bounds.removeFromTop(sliderHeight);
+    auto breathLabelArea = breathArea.removeFromTop(20);
+    breathinessLabel.setBounds(breathLabelArea);
+    breathinessSlider.setBounds(breathArea);
     
     // Tenseness
-    tensenessLabel.setBounds(bounds.getX(), bounds.getY() + 3 * totalGlottalHeight, bounds.getWidth(), glottalLabelHeight);
-    tensenessSlider.setBounds(bounds.getX(), bounds.getY() + 3 * totalGlottalHeight + glottalLabelHeight, bounds.getWidth(), glottalSliderHeight);
+    auto tenseArea = bounds.removeFromTop(sliderHeight);
+    auto tenseLabelArea = tenseArea.removeFromTop(20);
+    tensenessLabel.setBounds(tenseLabelArea);
+    tensenessSlider.setBounds(tenseArea);
 }
 
-void ISODRONEAudioProcessorEditor::setGlottalParams (juce::Slider& slider)
+void ISODRONEAudioProcessorEditor::setGlottalParams(juce::Slider& slider)
 {
-    slider.setSliderStyle (juce::Slider::SliderStyle::LinearHorizontal);
-    slider.setTextBoxStyle (juce::Slider::TextBoxBelow, true, 50, 25);
-    addAndMakeVisible (slider);
+    slider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
+    slider.setTextBoxStyle(juce::Slider::TextBoxBelow, true, 50, 25);
+    addAndMakeVisible(slider);
 }

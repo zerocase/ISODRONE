@@ -1,45 +1,43 @@
 /*
   ==============================================================================
 
-    This file contains the basic framework code for a JUCE plugin editor.
+    PluginEditor.h - Back to original structure with just oscillator consolidation
 
   ==============================================================================
 */
 
 #pragma once
-
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 #include "GUI/ADSRComponent.h"
+#include "GUI/OscComponent.h"
+
 //==============================================================================
 /**
 */
 class ISODRONEAudioProcessorEditor : public juce::AudioProcessorEditor
 {
 public:
-    ISODRONEAudioProcessorEditor (ISODRONEAudioProcessor&);
+    ISODRONEAudioProcessorEditor(ISODRONEAudioProcessor&);
     ~ISODRONEAudioProcessorEditor() override;
 
     //==============================================================================
-    void paint (juce::Graphics&) override;
+    void paint(juce::Graphics&) override;
     void resized() override;
 
 private:
     // Type alias for cleaner code
     using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
-    using ComboBoxAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
-    
-    void setGlottalParams (juce::Slider& slider);
-    void setupLabel (juce::Label& label, const juce::String& text);
+
+    void setGlottalParams(juce::Slider& slider);
 
     ISODRONEAudioProcessor& audioProcessor;
+    
+    // Components - OscComponent now just handles wave type selection
+    OscComponent osc;
     ADSRComponent adsr;
-
-    // Oscillator selector
-    juce::ComboBox oscSelector;
-    juce::Label oscLabel;
-
-    // Glottal parameter sliders
+    
+    // Glottal parameter sliders - back in main editor for now
     juce::Slider openQuotientSlider;
     juce::Slider asymmetrySlider;
     juce::Slider breathinessSlider;
@@ -51,14 +49,11 @@ private:
     juce::Label breathinessLabel;
     juce::Label tensenessLabel;
 
-    // Oscillator attachment
-    std::unique_ptr<ComboBoxAttachment> oscSelAttachment;
-
     // Glottal parameter attachments
     std::unique_ptr<SliderAttachment> openQuotientAttachment;
     std::unique_ptr<SliderAttachment> asymmetryAttachment;
     std::unique_ptr<SliderAttachment> breathinessAttachment;
     std::unique_ptr<SliderAttachment> tensenessAttachment;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ISODRONEAudioProcessorEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ISODRONEAudioProcessorEditor)
 };
