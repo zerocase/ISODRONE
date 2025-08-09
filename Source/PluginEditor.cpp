@@ -11,17 +11,9 @@
 
 //==============================================================================
 ISODRONEAudioProcessorEditor::ISODRONEAudioProcessorEditor (ISODRONEAudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor (p)
+    : AudioProcessorEditor (&p), audioProcessor (p), adsr(audioProcessor.apvts)
 {
     setSize (600, 500);  // Made larger
-    
-    using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
-    
-    // ADSR Attachments
-    attackAttachment = std::make_unique<SliderAttachment>(audioProcessor.apvts, "ATTACK", attackSlider);
-    decayAttachment = std::make_unique<SliderAttachment>(audioProcessor.apvts, "DECAY", decaySlider);
-    sustainAttachment = std::make_unique<SliderAttachment>(audioProcessor.apvts, "SUSTAIN", sustainSlider);
-    releaseAttachment = std::make_unique<SliderAttachment>(audioProcessor.apvts, "RELEASE", releaseSlider);
     
     // Oscillator attachment
     oscSelAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(audioProcessor.apvts, "OSC", oscSelector);
@@ -32,11 +24,6 @@ ISODRONEAudioProcessorEditor::ISODRONEAudioProcessorEditor (ISODRONEAudioProcess
     breathinessAttachment = std::make_unique<SliderAttachment>(audioProcessor.apvts, "BREATHINESS", breathinessSlider);
     tensenessAttachment = std::make_unique<SliderAttachment>(audioProcessor.apvts, "TENSENESS", tensenessSlider);
     
-    // Setup ADSR sliders
-    setADSRParams(attackSlider);
-    setADSRParams(decaySlider);
-    setADSRParams(sustainSlider);
-    setADSRParams(releaseSlider);
     
     // Setup glottal parameter sliders
     setGlottalParams(openQuotientSlider);
@@ -50,23 +37,8 @@ ISODRONEAudioProcessorEditor::ISODRONEAudioProcessorEditor (ISODRONEAudioProcess
     oscSelector.setSelectedId(2);  // Set default to Glottal
     addAndMakeVisible(oscSelector);
     
-    // Setup ADSR labels
-    attackLabel.setText("Attack", juce::dontSendNotification);
-    attackLabel.setJustificationType(juce::Justification::centred);
-    addAndMakeVisible(attackLabel);
-    
-    decayLabel.setText("Decay", juce::dontSendNotification);
-    decayLabel.setJustificationType(juce::Justification::centred);
-    addAndMakeVisible(decayLabel);
-    
-    sustainLabel.setText("Sustain", juce::dontSendNotification);
-    sustainLabel.setJustificationType(juce::Justification::centred);
-    addAndMakeVisible(sustainLabel);
-    
-    releaseLabel.setText("Release", juce::dontSendNotification);
-    releaseLabel.setJustificationType(juce::Justification::centred);
-    addAndMakeVisible(releaseLabel);
-    
+    addAndMakeVisible (adsr);
+
     // Setup glottal parameter labels
     openQuotientLabel.setText("Open Quotient", juce::dontSendNotification);
     openQuotientLabel.setJustificationType(juce::Justification::centredLeft);
@@ -102,34 +74,24 @@ void ISODRONEAudioProcessorEditor::paint (juce::Graphics& g)
 
 void ISODRONEAudioProcessorEditor::resized()
 {
-    auto bounds = getLocalBounds().reduced(20, 20);  // More padding - removed const
+    auto bounds = getLocalBounds().reduced(20, 20);
     const auto padding = 15;
     
     // Oscillator selector at top
     juce::Rectangle<int> oscArea = bounds.removeFromTop(50);
     oscLabel.setBounds(oscArea.getX(), oscArea.getY(), 80, 20);
     oscSelector.setBounds(oscArea.getX() + 85, oscArea.getY(), 150, 30);
-    
-    // ADSR section
-    juce::Rectangle<int> adsrArea = bounds.removeFromTop(200);
-    const auto sliderWidth = (adsrArea.getWidth() - 3 * padding) / 4;
-    const auto sliderHeight = adsrArea.getHeight() - 40; // Leave room for labels
-    
-    // ADSR labels (above sliders)
-    attackLabel.setBounds(adsrArea.getX(), adsrArea.getY(), sliderWidth, 20);
-    decayLabel.setBounds(attackLabel.getRight() + padding, adsrArea.getY(), sliderWidth, 20);
-    sustainLabel.setBounds(decayLabel.getRight() + padding, adsrArea.getY(), sliderWidth, 20);
-    releaseLabel.setBounds(sustainLabel.getRight() + padding, adsrArea.getY(), sliderWidth, 20);
-    
-    // ADSR sliders
-    attackSlider.setBounds(adsrArea.getX(), adsrArea.getY() + 25, sliderWidth, sliderHeight);
-    decaySlider.setBounds(attackSlider.getRight() + padding, adsrArea.getY() + 25, sliderWidth, sliderHeight);
-    sustainSlider.setBounds(decaySlider.getRight() + padding, adsrArea.getY() + 25, sliderWidth, sliderHeight);
-    releaseSlider.setBounds(sustainSlider.getRight() + padding, adsrArea.getY() + 25, sliderWidth, sliderHeight);
-    
+
     // Add some space
     bounds.removeFromTop(20);
     
+    // ADSR section - give it specific bounds instead of the entire area
+    juce::Rectangle<int> adsrArea = bounds.removeFromTop(200);
+    adsr.setBounds(adsrArea);
+
+    // Add some space
+    bounds.removeFromTop(20);
+
     // Glottal parameter sliders with labels
     const auto glottalSliderHeight = 40;
     const auto glottalLabelHeight = 20;
@@ -151,13 +113,6 @@ void ISODRONEAudioProcessorEditor::resized()
     // Tenseness
     tensenessLabel.setBounds(bounds.getX(), bounds.getY() + 3 * totalGlottalHeight, bounds.getWidth(), glottalLabelHeight);
     tensenessSlider.setBounds(bounds.getX(), bounds.getY() + 3 * totalGlottalHeight + glottalLabelHeight, bounds.getWidth(), glottalSliderHeight);
-}
-
-void ISODRONEAudioProcessorEditor::setADSRParams (juce::Slider& slider)
-{
-    slider.setSliderStyle (juce::Slider::SliderStyle::LinearVertical);
-    slider.setTextBoxStyle (juce::Slider::TextBoxBelow, true, 50, 25);
-    addAndMakeVisible (slider);
 }
 
 void ISODRONEAudioProcessorEditor::setGlottalParams (juce::Slider& slider)

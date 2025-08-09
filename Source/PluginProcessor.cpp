@@ -175,7 +175,7 @@ void ISODRONEAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
             // NEW: Set oscillator type and glottal parameters
             voice->setOscillatorType(static_cast<int>(oscType));
             voice->setGlottalParams(openQuotient.load(), asymmetry.load(), breathiness.load(), tenseness.load());
-            voice->updateADSR(attack.load(), decay.load(), sustain.load(), release.load());
+            voice->update(attack.load(), decay.load(), sustain.load(), release.load());
         }
     }
     for (const juce::MidiMessageMetadata metadata : midiMessages)

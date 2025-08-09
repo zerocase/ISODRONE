@@ -6,7 +6,6 @@
  ==============================================================================
 */
 #include "IsoVoice.h"
-
 //==============================================================================
 // NEW: GlottalOscillator Implementation
 //==============================================================================
@@ -254,14 +253,9 @@ void IsoVoice::prepareToPlay (double sampleRate, int samplesPerBlock, int output
     isPrepared = true;
 }
 
-void IsoVoice::updateADSR(const float attack, const float decay, const float sustain, const float release)
+void IsoVoice::update(const float attack, const float decay, const float sustain, const float release)
 {
-    adsrParams.attack = attack;
-    adsrParams.decay = decay;
-    adsrParams.sustain = sustain;
-    adsrParams.release = release;
-
-    adsr.setParameters (adsrParams);
+    adsr.updateADSR (attack, decay, sustain, release);
 }
 
 

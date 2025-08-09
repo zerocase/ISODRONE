@@ -1,6 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include "IsoSound.h"
+#include "Data/ADSRData.h"
 
 // Human voice frequency ranges (existing - no changes)
 struct VoiceRanges {
@@ -89,12 +90,10 @@ public:
     // NEW: Oscillator selection and glottal controls
     void setOscillatorType(int oscType);     // 0 = sawtooth, 1 = glottal
     void setGlottalParams(float oq, float alpha, float breath, float tension);
-    void updateADSR(const float attack, const float decay, const float sustain, const float release);
+    void update(const float attack, const float decay, const float sustain, const float release);
 
 private:
-    // Existing members (no changes)
-    juce::ADSR adsr;
-    juce::ADSR::Parameters adsrParams;
+    ADSRData adsr;
     juce::AudioBuffer<float> isoBuffer;
 
     juce::dsp::Oscillator<float> osc { [](float x) { return x / juce::MathConstants<float>::pi; }};
