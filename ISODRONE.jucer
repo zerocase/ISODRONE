@@ -9,8 +9,12 @@
       <GROUP id="{F3BC97B5-3645-FA46-F344-B66DAF4831C6}" name="Data">
         <FILE id="YMp6Ds" name="ADSRData.cpp" compile="1" resource="0" file="Source/Data/ADSRData.cpp"/>
         <FILE id="MNnZzR" name="ADSRData.h" compile="0" resource="0" file="Source/Data/ADSRData.h"/>
+        <FILE id="ITGhtw" name="FilterData.cpp" compile="1" resource="0" file="Source/Data/FilterData.cpp"/>
+        <FILE id="h2zhSx" name="FilterData.h" compile="0" resource="0" file="Source/Data/FilterData.h"/>
         <FILE id="KtAgZS" name="OscData.cpp" compile="1" resource="0" file="Source/Data/OscData.cpp"/>
         <FILE id="Ic9J3U" name="OscData.h" compile="0" resource="0" file="Source/Data/OscData.h"/>
+        <FILE id="kEP2ht" name="VowelFilter.cpp" compile="1" resource="0" file="Source/Data/VowelFilter.cpp"/>
+        <FILE id="P9kvsp" name="VowelFilter.h" compile="0" resource="0" file="Source/Data/VowelFilter.h"/>
       </GROUP>
       <GROUP id="{FD742836-A35E-8D0A-94F7-B83497588061}" name="GUI">
         <FILE id="Gs2Hjg" name="ADSRComponent.cpp" compile="1" resource="0"
@@ -20,8 +24,6 @@
               file="Source/GUI/OscComponent.cpp"/>
         <FILE id="fbQDeD" name="OscComponent.h" compile="0" resource="0" file="Source/GUI/OscComponent.h"/>
       </GROUP>
-      <FILE id="ECHwnN" name="VowelFilter.cpp" compile="1" resource="0" file="Source/VowelFilter.cpp"/>
-      <FILE id="pFqpBN" name="VowelFilter.h" compile="0" resource="0" file="Source/VowelFilter.h"/>
       <FILE id="ICgJct" name="IsoSound.cpp" compile="1" resource="0" file="Source/IsoSound.cpp"/>
       <FILE id="WV5QQp" name="IsoSound.h" compile="0" resource="0" file="Source/IsoSound.h"/>
       <FILE id="eq77D6" name="IsoVoice.cpp" compile="1" resource="0" file="Source/IsoVoice.cpp"/>

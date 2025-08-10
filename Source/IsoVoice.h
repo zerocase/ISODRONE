@@ -8,6 +8,8 @@
 #include "IsoSound.h"
 #include "Data/ADSRData.h"
 #include "Data/OscData.h"
+#include "Data/FilterData.h"
+
 
 // Human voice frequency ranges
 struct VoiceRanges {
@@ -61,8 +63,11 @@ public:
     
     // Glottal parameter control (delegates to OscData)
     void setGlottalParams(float oq, float alpha, float breath, float tension);
+    void reset_filter();
+
 
 private:
+    FilterData filterData;
     ADSRData adsr;
     juce::AudioBuffer<float> isoBuffer;
     

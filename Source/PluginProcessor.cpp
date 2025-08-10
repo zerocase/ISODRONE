@@ -107,16 +107,19 @@ void ISODRONEAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
         }
     }
 
-    vowelFilter.prepareToPlay(sampleRate, samplesPerBlock);
     // Start a continuous note
     //iso.noteOn(1, 30, 1.0f); // channel 1, middle C, full velocity
 }
 
 void ISODRONEAudioProcessor::releaseResources()
 {   
-    vowelFilter.reset();
-    // When playback stops, you can use this as an opportunity to free up any
-    // spare memory, etc.
+    for (int i = 0; i < iso.getNumVoices(); i++)
+    {
+        if (auto voice = dynamic_cast<IsoVoice*>(iso.getVoice(i)))
+        {
+            voice->reset_filter();
+        }
+    }
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -197,7 +200,6 @@ void ISODRONEAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
             juce::Logger::writeToLog ("TimeStamp: " + juce::String (metadata.getMessage().getTimeStamp()));
     
     iso.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
-    vowelFilter.processBlock(buffer);
 }
 
 //==============================================================================
@@ -250,5 +252,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout ISODRONEAudioProcessor::crea
     params.push_back(std::make_unique<juce::AudioParameterFloat> ("BREATHINESS", "Breathiness", juce::NormalisableRange<float> {0.0f, 1.0f}, 0.1f));
     params.push_back(std::make_unique<juce::AudioParameterFloat> ("TENSENESS", "Tenseness", juce::NormalisableRange<float> {0.0f, 1.0f}, 0.8f));
 
+    //Filter
+    params.push_back (std::make_unique<juce::AudioParameterChoice> ("FILTERTYPE", "Filter Type", juce::StringArray { "Low-Pass", "Band-Pass", "High-Pass" }, 0));
+    params.push_back(std::make_unique<juce::AudioParameterFloat> ("FILTERCUTOFF", "Filter Cutoff", juce::NormalisableRange<float> {20.0f, 20000.0f, 0.1f, 0.6f}, 200.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat> ("FILTERRES", "Filter Resonance", juce::NormalisableRange<float> {1.0f, 10.0f, 0.1f}, 1.0f));
     return { params.begin(), params.end() };
 }

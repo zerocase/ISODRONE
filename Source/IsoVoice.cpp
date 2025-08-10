@@ -114,13 +114,19 @@ void IsoVoice::prepareToPlay (double sampleRate, int samplesPerBlock, int output
     gain.prepare (spec);
 
     gain.setGainLinear (1.0f);
-    
+    filterData.prepareToPlay(sampleRate, samplesPerBlock, outputChannels);
+
     isPrepared = true;
 }
 
 void IsoVoice::update(const float attack, const float decay, const float sustain, const float release)
 {
     adsr.updateADSR (attack, decay, sustain, release);
+}
+
+void IsoVoice::reset_filter()
+{
+    filterData.reset();
 }
 
 void IsoVoice::renderNextBlock (juce::AudioBuffer< float > &outputBuffer, int startSample, int numSamples)
@@ -133,6 +139,7 @@ void IsoVoice::renderNextBlock (juce::AudioBuffer< float > &outputBuffer, int st
     // Set up temporary buffer for this voice
     isoBuffer.setSize (outputBuffer.getNumChannels(), numSamples, false, false, true);
     isoBuffer.clear();
+
     
     // Get audio block from buffer - this is the TAP pattern
     juce::dsp::AudioBlock<float> audioBlock { isoBuffer };
@@ -142,6 +149,10 @@ void IsoVoice::renderNextBlock (juce::AudioBuffer< float > &outputBuffer, int st
 
     // Apply gain processing 
     gain.process (juce::dsp::ProcessContextReplacing<float> (audioBlock));
+
+    //Apply the vowel
+    filterData.process(isoBuffer);
+
     
     // Apply ADSR envelope to the processed buffer
     adsr.applyEnvelopeToBuffer(isoBuffer, 0, numSamples);
