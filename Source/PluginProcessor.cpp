@@ -103,7 +103,6 @@ void ISODRONEAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
         if (auto voice = dynamic_cast<IsoVoice*>(iso.getVoice(i)))
         {
             voice->prepareToPlay (sampleRate, samplesPerBlock, getTotalNumOutputChannels());
-            voice->setUseVoiceMapping(true);
         }
     }
 

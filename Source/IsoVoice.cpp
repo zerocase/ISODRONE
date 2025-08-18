@@ -16,64 +16,12 @@ bool IsoVoice::canPlaySound (juce::SynthesiserSound* sound)
     return dynamic_cast<juce::SynthesiserSound*>(sound) != nullptr;
 }
 
-float IsoVoice::mapMidiToHumanVoice(int midiNote)
-{
-    // Define the MIDI range we want to use (typically C1 to C7 for voice synthesis)
-    const int MIN_MIDI = 24;  // C1 (32.7 Hz)
-    const int MAX_MIDI = 96;  // C7 (2093 Hz)
-    
-    // Clamp the input MIDI note to our usable range
-    int clampedMidi = juce::jlimit(MIN_MIDI, MAX_MIDI, midiNote);
-    
-    // Normalize to 0.0 - 1.0 range
-    float normalizedMidi = static_cast<float>(clampedMidi - MIN_MIDI) / (MAX_MIDI - MIN_MIDI);
-    
-    // Get frequency range for the selected voice type
-    float lowFreq, highFreq;
-    switch (voiceType) {
-    case BASS:
-        lowFreq = VoiceRanges::BASS_LOW;      // ~87 Hz (F2)
-        highFreq = VoiceRanges::BASS_HIGH;    // ~349 Hz (F4)
-        break;
-    case BARITONE:
-        lowFreq = VoiceRanges::BARITONE_LOW;  // ~98 Hz (G2)
-        highFreq = VoiceRanges::BARITONE_HIGH;// ~392 Hz (G4)
-        break;
-    case TENOR:
-        lowFreq = VoiceRanges::TENOR_LOW;     // ~131 Hz (C3)
-        highFreq = VoiceRanges::TENOR_HIGH;   // ~523 Hz (C5)
-        break;
-    case ALTO:
-        lowFreq = VoiceRanges::ALTO_LOW;      // ~175 Hz (F3)
-        highFreq = VoiceRanges::ALTO_HIGH;    // ~698 Hz (F5)
-        break;
-    case SOPRANO:
-        lowFreq = VoiceRanges::SOPRANO_LOW;   // ~262 Hz (C4)
-        highFreq = VoiceRanges::SOPRANO_HIGH; // ~1047 Hz (C6)
-        break;
-    case FULL_RANGE:
-    default:
-        lowFreq = VoiceRanges::HUMAN_LOW;     // Full human vocal range
-        highFreq = VoiceRanges::HUMAN_HIGH;
-        break;
-    }
-    
-    // Use logarithmic mapping for musical intervals
-    float logLow = std::log(lowFreq);
-    float logHigh = std::log(highFreq);
-    float logFreq = logLow + normalizedMidi * (logHigh - logLow);
-    
-    return std::exp(logFreq);
-}
+
 
 void IsoVoice::startNote (int midiNoteNumber, float velocity, juce::SynthesiserSound *sound, int currentPitchWheelPosition)
 {
     float frequency;
-    if (useVoiceMapping) {
-        frequency = mapMidiToHumanVoice(midiNoteNumber);
-    } else {
-        frequency = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber);
-    }
+    frequency = 127.0f;
     
     // Set frequency directly
     osc.setWaveFrequency(frequency);
