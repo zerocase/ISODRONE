@@ -114,7 +114,7 @@ void IsoVoice::prepareToPlay (double sampleRate, int samplesPerBlock, int output
     gain.prepare (spec);
 
     gain.setGainLinear (1.0f);
-    filterData.prepareToPlay(sampleRate, samplesPerBlock, outputChannels);
+    filterData.prepareToPlay(sampleRate, samplesPerBlock);
 
     isPrepared = true;
 }

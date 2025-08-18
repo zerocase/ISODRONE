@@ -19,7 +19,7 @@ public:
     ~VowelFilter();
 
     void prepareToPlay(double sampleRate, int samplesPerBlock);
-    void processBlock(juce::AudioBuffer<float>& buffer);
+    void process(juce::AudioBuffer<float>& buffer);
     void reset();
 
     // Parameter setters

@@ -39,7 +39,7 @@ void VowelFilter::prepareToPlay(double newSampleRate, int samplesPerBlock)
 {
     sampleRate = newSampleRate;
     
-    // Assume stereo for now, will be updated in processBlock if needed
+    // Assume stereo for now, will be updated in process if needed
     if (numChannels == 0)
         numChannels = 2;
     
@@ -63,7 +63,7 @@ void VowelFilter::prepareToPlay(double newSampleRate, int samplesPerBlock)
     tempBuffer.setSize(numChannels, samplesPerBlock, false, true, true);
 }
 
-void VowelFilter::processBlock(juce::AudioBuffer<float>& buffer)
+void VowelFilter::process(juce::AudioBuffer<float>& buffer)
 {
     const int numSamples = buffer.getNumSamples();
     const int channels = buffer.getNumChannels();

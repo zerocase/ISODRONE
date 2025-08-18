@@ -8,7 +8,7 @@
 #include "IsoSound.h"
 #include "Data/ADSRData.h"
 #include "Data/OscData.h"
-#include "Data/FilterData.h"
+#include "Data/VowelFilter.h"
 
 
 // Human voice frequency ranges
@@ -67,7 +67,7 @@ public:
 
 
 private:
-    FilterData filterData;
+    VowelFilter filterData;
     ADSRData adsr;
     juce::AudioBuffer<float> isoBuffer;
     
