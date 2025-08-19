@@ -20,11 +20,13 @@ bool IsoVoice::canPlaySound (juce::SynthesiserSound* sound)
 
 void IsoVoice::startNote (int midiNoteNumber, float velocity, juce::SynthesiserSound *sound, int currentPitchWheelPosition)
 {
-    float frequency;
-    frequency = 127.0f;
+    // Convert MIDI note number to frequency using JUCE's built-in function
+    float frequency = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber);
     
-    // Set frequency directly
+    // Set the oscillator frequency to the note's frequency
     osc.setWaveFrequency(frequency);
+    
+    // Trigger the ADSR envelope
     adsr.noteOn();
 }
 

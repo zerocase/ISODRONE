@@ -6,6 +6,9 @@
               pluginFormats="buildStandalone,buildVST3" lv2Uri="www.zerocase.xyz/isodrone">
   <MAINGROUP id="pq2wvQ" name="ISODRONE">
     <GROUP id="{C9056C09-DE16-D82D-D7AB-F8E6161CF9F0}" name="Source">
+      <FILE id="yyySLh" name="MidiProcessor.cpp" compile="1" resource="0"
+            file="Source/MidiProcessor.cpp"/>
+      <FILE id="Z7FsRF" name="MidiProcessor.h" compile="0" resource="0" file="Source/MidiProcessor.h"/>
       <GROUP id="{F3BC97B5-3645-FA46-F344-B66DAF4831C6}" name="Data">
         <FILE id="YMp6Ds" name="ADSRData.cpp" compile="1" resource="0" file="Source/Data/ADSRData.cpp"/>
         <FILE id="MNnZzR" name="ADSRData.h" compile="0" resource="0" file="Source/Data/ADSRData.h"/>
@@ -13,6 +16,9 @@
         <FILE id="h2zhSx" name="FilterData.h" compile="0" resource="0" file="Source/Data/FilterData.h"/>
         <FILE id="KtAgZS" name="OscData.cpp" compile="1" resource="0" file="Source/Data/OscData.cpp"/>
         <FILE id="Ic9J3U" name="OscData.h" compile="0" resource="0" file="Source/Data/OscData.h"/>
+        <FILE id="TZYBBV" name="ScalaFile.h" compile="0" resource="0" file="Source/Data/ScalaFile.h"/>
+        <FILE id="wnFVOj" name="ScalaKBM.cpp" compile="1" resource="0" file="Source/Data/ScalaKBM.cpp"/>
+        <FILE id="VsRLul" name="ScalaSCL.cpp" compile="1" resource="0" file="Source/Data/ScalaSCL.cpp"/>
         <FILE id="kEP2ht" name="VowelFilter.cpp" compile="1" resource="0" file="Source/Data/VowelFilter.cpp"/>
         <FILE id="P9kvsp" name="VowelFilter.h" compile="0" resource="0" file="Source/Data/VowelFilter.h"/>
       </GROUP>

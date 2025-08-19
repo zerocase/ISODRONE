@@ -49,11 +49,16 @@ private:
     juce::Label breathinessLabel;
     juce::Label tensenessLabel;
 
+    juce::TextButton loadScalaButton;
+    juce::TextButton loadKbmButton;
+    juce::Label scalaStatusLabel;
+
     // Glottal parameter attachments
     std::unique_ptr<SliderAttachment> openQuotientAttachment;
     std::unique_ptr<SliderAttachment> asymmetryAttachment;
     std::unique_ptr<SliderAttachment> breathinessAttachment;
     std::unique_ptr<SliderAttachment> tensenessAttachment;
+
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ISODRONEAudioProcessorEditor)
 };

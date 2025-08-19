@@ -47,6 +47,24 @@ ISODRONEAudioProcessorEditor::ISODRONEAudioProcessorEditor(ISODRONEAudioProcesso
     tensenessLabel.setText("Tenseness", juce::dontSendNotification);
     tensenessLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(tensenessLabel);
+
+    // Setup Scala file loading components
+    loadScalaButton.setButtonText("Load .scl");
+    loadScalaButton.onClick = [this] { 
+        audioProcessor.midiProcessor.loadScalaFile(); 
+        scalaStatusLabel.setText("Scala file loaded", juce::dontSendNotification);
+    };
+    addAndMakeVisible(loadScalaButton);
+
+    loadKbmButton.setButtonText("Load .kbm"); 
+    loadKbmButton.onClick = [this] { 
+        audioProcessor.midiProcessor.loadKbmFile(); 
+    };
+    addAndMakeVisible(loadKbmButton);
+
+    scalaStatusLabel.setText("12-TET (default)", juce::dontSendNotification);
+    scalaStatusLabel.setJustificationType(juce::Justification::centredLeft);
+    addAndMakeVisible(scalaStatusLabel);
 }
 
 ISODRONEAudioProcessorEditor::~ISODRONEAudioProcessorEditor()
@@ -62,6 +80,20 @@ void ISODRONEAudioProcessorEditor::paint(juce::Graphics& g)
 void ISODRONEAudioProcessorEditor::resized()
 {
     auto bounds = getLocalBounds().reduced(20, 20);
+
+    // Scala file loading section at the top
+    auto scalaArea = bounds.removeFromTop(50);
+    auto buttonWidth = 100;
+    auto buttonGap = 10;
+    
+    loadScalaButton.setBounds(scalaArea.removeFromLeft(buttonWidth));
+    scalaArea.removeFromLeft(buttonGap);
+    loadKbmButton.setBounds(scalaArea.removeFromLeft(buttonWidth));
+    scalaArea.removeFromLeft(buttonGap);
+    scalaStatusLabel.setBounds(scalaArea);
+    
+    // Add gap after Scala section
+    bounds.removeFromTop(20);
     
     // Give oscillator component enough space and make sure it's properly sized
     auto oscArea = bounds.removeFromTop(80);  // Plenty of space

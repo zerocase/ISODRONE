@@ -11,6 +11,7 @@
 #include <JuceHeader.h>
 #include "IsoVoice.h"
 #include "IsoSound.h"
+#include "MidiProcessor.h"
 
 //==============================================================================
 /**
@@ -56,6 +57,7 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
     juce::AudioProcessorValueTreeState apvts;
     static juce::AudioProcessorValueTreeState::ParameterLayout createParams();
+    MidiProcessor midiProcessor;
     
 private:
     juce::Synthesiser iso;
