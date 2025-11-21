@@ -28,6 +28,13 @@ VowelFilter::VowelFilter()
     : sampleRate(44100.0)
     , numChannels(2)
     , currentVowel(E)
+    , currentFundamental(220.0f)
+    , referenceFundamental(220.0f)
+    , formantShift(1.0f)
+    , formantSpread(1.0f)
+    , bandwidthScale(1.0f)
+    , resonanceGain(1.0f)
+    , harmonicAlignment(false)
 {
 }
 
@@ -39,7 +46,6 @@ void VowelFilter::prepareToPlay(double newSampleRate, int samplesPerBlock)
 {
     sampleRate = newSampleRate;
     
-    // Assume stereo for now, will be updated in process if needed
     if (numChannels == 0)
         numChannels = 2;
     
@@ -83,8 +89,6 @@ void VowelFilter::process(juce::AudioBuffer<float>& buffer)
     
     // Ensure temp buffer is the right size
     tempBuffer.setSize(channels, numSamples, false, false, true);
-    
-    // Clear the output buffer - we'll replace it with the filtered result
     tempBuffer.clear();
     
     // Create temporary arrays for each formant processing
@@ -118,8 +122,8 @@ void VowelFilter::process(juce::AudioBuffer<float>& buffer)
             // Sum all formant outputs
             float filteredSample = formant1Data[sample] + formant2Data[sample] + formant3Data[sample];
             
-            // Apply overall gain scaling (conservative scaling to prevent clipping)
-            filteredSample *= 0.5f;
+            // Apply overall gain scaling with resonance control
+            filteredSample *= (0.7f * resonanceGain);
             
             // Soft clipping for safety
             filteredSample = juce::jlimit(-0.95f, 0.95f, filteredSample);
@@ -144,6 +148,7 @@ void VowelFilter::reset()
         if (filter) filter->reset();
 }
 
+// Main controls
 void VowelFilter::setVowelType(VowelType vowel)
 {
     if (currentVowel != vowel)
@@ -153,22 +158,132 @@ void VowelFilter::setVowelType(VowelType vowel)
     }
 }
 
+void VowelFilter::setFundamentalFrequency(float frequency)
+{
+    if (std::abs(frequency - currentFundamental) > 1.0f && frequency > 50.0f && frequency < 2000.0f)
+    {
+        currentFundamental = frequency;
+        updateFilters();
+    }
+}
+
+// Advanced filter controls
+void VowelFilter::setFormantShift(float shiftFactor)
+{
+    shiftFactor = juce::jlimit(0.5f, 2.0f, shiftFactor);
+    if (std::abs(formantShift - shiftFactor) > 0.01f)
+    {
+        formantShift = shiftFactor;
+        updateFilters();
+    }
+}
+
+void VowelFilter::setFormantSpread(float spreadFactor)
+{
+    spreadFactor = juce::jlimit(0.5f, 2.0f, spreadFactor);
+    if (std::abs(formantSpread - spreadFactor) > 0.01f)
+    {
+        formantSpread = spreadFactor;
+        updateFilters();
+    }
+}
+
+void VowelFilter::setBandwidthScale(float bandwidthFactor)
+{
+    bandwidthFactor = juce::jlimit(0.5f, 3.0f, bandwidthFactor);
+    if (std::abs(bandwidthScale - bandwidthFactor) > 0.01f)
+    {
+        bandwidthScale = bandwidthFactor;
+        updateFilters();
+    }
+}
+
+void VowelFilter::setResonanceGain(float gainFactor)
+{
+    resonanceGain = juce::jlimit(0.1f, 2.0f, gainFactor);
+    // No need to update filters, this is applied in real-time during processing
+}
+
+void VowelFilter::setHarmonicAlignment(bool enabled)
+{
+    if (harmonicAlignment != enabled)
+    {
+        harmonicAlignment = enabled;
+        updateFilters();
+    }
+}
+
+// Internal methods
+float VowelFilter::findNearestHarmonic(float formantFreq, float fundamental)
+{
+    if (fundamental <= 0.0f) return formantFreq;
+    
+    int harmonicNumber = juce::roundToInt(formantFreq / fundamental);
+    if (harmonicNumber < 1) harmonicNumber = 1;
+    
+    return fundamental * harmonicNumber;
+}
+
+float VowelFilter::applyFormantAdjustments(float baseFrequency, int formantIndex)
+{
+    float adjustedFreq = baseFrequency;
+    
+    // Apply pitch-based scaling
+    if (currentFundamental > 0.0f)
+    {
+        float pitchRatio = currentFundamental / referenceFundamental;
+        adjustedFreq *= std::pow(pitchRatio, 0.25f);
+    }
+    
+    // Apply global formant shift
+    adjustedFreq *= formantShift;
+    
+    // Apply formant spreading (spread higher formants more)
+    if (formantIndex > 0)
+    {
+        float spreadAmount = 1.0f + (formantSpread - 1.0f) * (formantIndex / 2.0f);
+        adjustedFreq *= spreadAmount;
+    }
+    
+    // Apply harmonic alignment if enabled
+    if (harmonicAlignment && currentFundamental > 0.0f)
+    {
+        adjustedFreq = findNearestHarmonic(adjustedFreq, currentFundamental);
+    }
+    
+    // Ensure reasonable limits
+    adjustedFreq = juce::jlimit(baseFrequency * 0.5f, baseFrequency * 2.5f, adjustedFreq);
+    
+    return adjustedFreq;
+}
+
 void VowelFilter::updateFilters()
 {
-    // Get current formant data
     const FormantData& formant = vowelFormants[currentVowel];
     
     // Update each formant filter for all channels
     for (int channel = 0; channel < static_cast<int>(formant1Filters.size()); ++channel)
     {
         if (formant1Filters[channel])
-            createBandpassFilter(formant1Filters[channel].get(), formant.f1, formant.bw1, formant.gain1);
+        {
+            float freq = applyFormantAdjustments(formant.f1, 0);
+            float bw = formant.bw1 * bandwidthScale;
+            createBandpassFilter(formant1Filters[channel].get(), freq, bw, formant.gain1);
+        }
             
         if (formant2Filters[channel])
-            createBandpassFilter(formant2Filters[channel].get(), formant.f2, formant.bw2, formant.gain2);
+        {
+            float freq = applyFormantAdjustments(formant.f2, 1);
+            float bw = formant.bw2 * bandwidthScale;
+            createBandpassFilter(formant2Filters[channel].get(), freq, bw, formant.gain2);
+        }
             
         if (formant3Filters[channel])
-            createBandpassFilter(formant3Filters[channel].get(), formant.f3, formant.bw3, formant.gain3);
+        {
+            float freq = applyFormantAdjustments(formant.f3, 2);
+            float bw = formant.bw3 * bandwidthScale;
+            createBandpassFilter(formant3Filters[channel].get(), freq, bw, formant.gain3);
+        }
     }
 }
 
@@ -176,23 +291,22 @@ void VowelFilter::createBandpassFilter(juce::IIRFilter* filter, float frequency,
 {
     // Ensure frequency is within valid range
     frequency = juce::jlimit(50.0f, static_cast<float>(sampleRate * 0.4), frequency);
-    bandwidth = juce::jlimit(20.0f, frequency * 0.5f, bandwidth); // Clamp bandwidth
+    bandwidth = juce::jlimit(20.0f, frequency * 0.5f, bandwidth);
     
     // Convert bandwidth to Q factor: Q = frequency / bandwidth
     float q = frequency / bandwidth;
-    q = juce::jlimit(0.5f, 20.0f, q); // Limit Q to stable range
+    q = juce::jlimit(0.7f, 8.0f, q);
     
     // Create bandpass filter coefficients
     auto coefficients = juce::IIRCoefficients::makeBandPass(sampleRate, frequency, q);
     
-    // Apply a more conservative gain to prevent instability
+    // Apply gain scaling
     float safeGain = juce::jlimit(0.1f, 2.0f, gain);
     
     // Scale coefficients properly - only scale the numerator (b coefficients)
     coefficients.coefficients[0] *= safeGain; // b0
     coefficients.coefficients[1] *= safeGain; // b1  
     coefficients.coefficients[2] *= safeGain; // b2
-    // Don't modify a1, a2 (denominator coefficients)
     
     filter->setCoefficients(coefficients);
 }

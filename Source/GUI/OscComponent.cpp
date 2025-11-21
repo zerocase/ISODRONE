@@ -1,10 +1,11 @@
 /*
- ==============================================================================
- OscComponent.cpp
- Created: 9 Aug 2025 4:46:07pm
- Author: zerocase
- ==============================================================================
+  ==============================================================================
+
+    OscComponent.cpp - Updated for new styling
+
+  ==============================================================================
 */
+
 #include <JuceHeader.h>
 #include "OscComponent.h"
 
@@ -14,21 +15,29 @@ OscComponent::OscComponent(juce::AudioProcessorValueTreeState& apvts, juce::Stri
     // Wave selector setup
     juce::StringArray choices {"Sawtooth", "Glottal"};
     oscWaveSelector.addItemList(choices, 1);
-    oscWaveSelector.setSelectedId(1);
+    oscWaveSelector.setSelectedId(2); // Default to Glottal (index 2)
     
-    // Simple, clean styling
-    oscWaveSelector.setColour(juce::ComboBox::backgroundColourId, juce::Colours::white);
-    oscWaveSelector.setColour(juce::ComboBox::textColourId, juce::Colours::black);
-    oscWaveSelector.setColour(juce::ComboBox::outlineColourId, juce::Colours::grey);
+    // Modern styling for ComboBox
+    oscWaveSelector.setColour(juce::ComboBox::backgroundColourId, juce::Colour(0xff2a2a2a));
+    oscWaveSelector.setColour(juce::ComboBox::textColourId, juce::Colours::white);
+    oscWaveSelector.setColour(juce::ComboBox::outlineColourId, juce::Colour(0xff4a9eff));
+    oscWaveSelector.setColour(juce::ComboBox::arrowColourId, juce::Colour(0xff4a9eff));
+    oscWaveSelector.setColour(juce::ComboBox::buttonColourId, juce::Colour(0xff333333));
+    
+    // Popup styling
+    oscWaveSelector.setColour(juce::PopupMenu::backgroundColourId, juce::Colour(0xff2a2a2a));
+    oscWaveSelector.setColour(juce::PopupMenu::textColourId, juce::Colours::white);
+    oscWaveSelector.setColour(juce::PopupMenu::highlightedBackgroundColourId, juce::Colour(0xff4a9eff));
     
     addAndMakeVisible(oscWaveSelector);
-    
+
     // Label setup
     oscWaveSelectorLabel.setText("Oscillator Type", juce::dontSendNotification);
-    oscWaveSelectorLabel.setJustificationType(juce::Justification::centredLeft);
-    oscWaveSelectorLabel.setColour(juce::Label::textColourId, juce::Colours::white);
+    oscWaveSelectorLabel.setJustificationType(juce::Justification::centred);
+    oscWaveSelectorLabel.setColour(juce::Label::textColourId, juce::Colour(0xff4a9eff));
+    oscWaveSelectorLabel.setFont(juce::Font(14.0f, juce::Font::bold));
     addAndMakeVisible(oscWaveSelectorLabel);
-    
+
     // Create attachment
     oscWaveSelectorAttachment = std::make_unique<ComboBoxAttachment>(apvts, waveSelectorId, oscWaveSelector);
 }
@@ -39,24 +48,25 @@ OscComponent::~OscComponent()
 
 void OscComponent::paint(juce::Graphics& g)
 {
-    // Simple background - no weird styling
-    g.fillAll(juce::Colours::darkgrey);
+    // Completely transparent - let the main UI handle all drawing
+    g.fillAll(juce::Colour(0x00000000));
 }
 
 void OscComponent::resized()
 {
-    // Get the full component area
     auto area = getLocalBounds();
     
-    // Clear separation - label at top, combo below with gap
-    auto labelBounds = juce::Rectangle<int>(0, 0, getWidth(), 20);
-    auto comboBounds = juce::Rectangle<int>(0, 25, getWidth(), 30);
+    // Section label at top with proper spacing
+    auto labelArea = area.removeFromTop(30);
+    oscWaveSelectorLabel.setBounds(labelArea);
     
-    oscWaveSelectorLabel.setBounds(labelBounds);
+    // Small gap
+    area.removeFromTop(15);
+    
+    // ComboBox - make it smaller and centered
+    auto comboHeight = 30;
+    auto comboArea = area.removeFromTop(comboHeight);
+    auto comboWidth = 50; // Fixed smaller width instead of responsive
+    auto comboBounds = comboArea.withSizeKeepingCentre(comboWidth, comboHeight);
     oscWaveSelector.setBounds(comboBounds);
-    
-    // Debug output
-    DBG("OscComponent size: " << getWidth() << "x" << getHeight());
-    DBG("Label bounds: " << labelBounds.toString());
-    DBG("Combo bounds: " << comboBounds.toString());
 }

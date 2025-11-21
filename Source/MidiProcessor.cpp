@@ -9,6 +9,78 @@
 
 void MidiProcessor::process(juce::MidiBuffer& midiMessages)
 {
+    // Handle CC messages from encoders
+    for (const juce::MidiMessageMetadata metadata : midiMessages)
+    {
+        auto message = metadata.getMessage();
+        
+        if (message.isController())
+        {
+            int cc = message.getControllerNumber();
+            int val = message.getControllerValue();
+            
+            switch (cc)
+            {
+                // Oscillator page (CC 20-23)
+                case 20: 
+                    openQuotient = ccToRange(val, 0.3f, 0.7f);
+                    if (apvts) apvts->getParameter("OPENQUOT")->setValueNotifyingHost(val / 127.0f);
+                    DBG("CC20 OpenQuotient: " + juce::String(openQuotient.load()));
+                    break;
+                case 21: 
+                    asymmetry = ccToRange(val, 0.1f, 2.0f);
+                    if (apvts) apvts->getParameter("ASYMMETRY")->setValueNotifyingHost(val / 127.0f);
+                    DBG("CC21 Asymmetry: " + juce::String(asymmetry.load()));
+                    break;
+                case 22: 
+                    breathiness = ccToRange(val, 0.0f, 1.0f);
+                    if (apvts) apvts->getParameter("BREATHINESS")->setValueNotifyingHost(val / 127.0f);
+                    DBG("CC22 Breathiness: " + juce::String(breathiness.load()));
+                    break;
+                case 23: 
+                    tenseness = ccToRange(val, 0.0f, 1.0f);
+                    if (apvts) apvts->getParameter("TENSENESS")->setValueNotifyingHost(val / 127.0f);
+                    DBG("CC23 Tenseness: " + juce::String(tenseness.load()));
+                    break;
+                
+                // Vowel page (CC 30-34)
+                case 30: 
+                    formantShift = ccToRange(val, 0.5f, 2.0f);
+                    if (apvts) apvts->getParameter("FORMANTSHIFT")->setValueNotifyingHost(val / 127.0f);
+                    DBG("CC30 FormantShift: " + juce::String(formantShift.load()));
+                    break;
+                case 31: 
+                    formantSpread = ccToRange(val, 0.5f, 2.0f);
+                    if (apvts) apvts->getParameter("FORMANTSPREAD")->setValueNotifyingHost(val / 127.0f);
+                    DBG("CC31 FormantSpread: " + juce::String(formantSpread.load()));
+                    break;
+                case 32: 
+                    bandwidthScale = ccToRange(val, 0.5f, 3.0f);
+                    if (apvts) apvts->getParameter("BANDWIDTHSCALE")->setValueNotifyingHost(val / 127.0f);
+                    DBG("CC32 BandwidthScale: " + juce::String(bandwidthScale.load()));
+                    break;
+                case 33: 
+                    resonanceGain = ccToRange(val, 0.1f, 2.0f);
+                    if (apvts) apvts->getParameter("RESONANCEGAIN")->setValueNotifyingHost(val / 127.0f);
+                    DBG("CC33 ResonanceGain: " + juce::String(resonanceGain.load()));
+                    break;
+                case 34: 
+                    vowelType = val / 26;
+                    if (apvts) apvts->getParameter("VOWELTYPE")->setValueNotifyingHost(val / 127.0f);
+                    DBG("CC34 VowelType: " + juce::String(vowelType.load()));
+                    break;
+                
+                // Page indicator (CC 119)
+                case 119: 
+                    currentPage = val; 
+                    DBG("Page changed to: " + juce::String(val == 0 ? "OSCILLATOR" : "VOWEL"));
+                    break;
+            }
+        }
+    }
+    
+
+
     if (!scalaFileLoaded)
     {
         // No Scala file loaded, just log and pass through unchanged

@@ -26,6 +26,7 @@ ISODRONEAudioProcessor::ISODRONEAudioProcessor()
 {
     iso.addSound (new IsoSound());
     iso.addVoice (new IsoVoice());
+    midiProcessor.setApvts(&apvts);  // Add this
 }
 
 ISODRONEAudioProcessor::~ISODRONEAudioProcessor()
@@ -103,6 +104,7 @@ void ISODRONEAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
         if (auto voice = dynamic_cast<IsoVoice*>(iso.getVoice(i)))
         {
             voice->prepareToPlay (sampleRate, samplesPerBlock, getTotalNumOutputChannels());
+            voice->setMidiProcessor(&midiProcessor); // Connect MidiProcessor
         }
     }
 
@@ -156,10 +158,12 @@ void ISODRONEAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    // Get oscillator type and glottal parameters
+    // Process MIDI first (handles CC messages)
+    midiProcessor.process(midiMessages);
+
+    // Get oscillator type
     auto& oscWaveChoice = *apvts.getRawParameterValue("OSC1WAVETYPE");
 
-    // Only debug oscillator changes when they actually occur
     static int lastOscChoice = -1;
     int currentOscChoice = static_cast<int>(oscWaveChoice.load());
     
@@ -169,15 +173,27 @@ void ISODRONEAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         lastOscChoice = currentOscChoice;
     }
 
-    auto& openQuotient = *apvts.getRawParameterValue("OPENQUOT");
-    auto& asymmetry = *apvts.getRawParameterValue("ASYMMETRY");
-    auto& breathiness = *apvts.getRawParameterValue("BREATHINESS");
-    auto& tenseness = *apvts.getRawParameterValue("TENSENESS");
+    // Use MIDI CC values (from encoders) for glottal params
+    float oq = midiProcessor.openQuotient.load();
+    float asym = midiProcessor.asymmetry.load();
+    float breath = midiProcessor.breathiness.load();
+    float tense = midiProcessor.tenseness.load();
 
+    // ADSR still from GUI
     auto& attack = *apvts.getRawParameterValue("ATTACK");
     auto& decay = *apvts.getRawParameterValue("DECAY");
     auto& sustain = *apvts.getRawParameterValue("SUSTAIN");
     auto& release = *apvts.getRawParameterValue("RELEASE");
+
+    // Use MIDI CC values (from encoders) for vowel params
+    float fShift = midiProcessor.formantShift.load();
+    float fSpread = midiProcessor.formantSpread.load();
+    float bwScale = midiProcessor.bandwidthScale.load();
+    float resGain = midiProcessor.resonanceGain.load();
+    int vType = midiProcessor.vowelType.load();
+    
+    // Harmonic align still from GUI
+    auto& harmonicAlign = *apvts.getRawParameterValue("HARMONICALIGN");
 
     for (int i = 0; i < iso.getNumVoices(); ++i)
     {
@@ -186,18 +202,26 @@ void ISODRONEAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
             // Set oscillator type
             voice->getOscillator().setWaveType(currentOscChoice);
             
-            // Set glottal parameters
-            voice->setGlottalParams(openQuotient.load(), asymmetry.load(), breathiness.load(), tenseness.load());
+            // Set glottal parameters (from MIDI CC)
+            voice->setGlottalParams(oq, asym, breath, tense);
             
             // Update ADSR
             voice->update(attack.load(), decay.load(), sustain.load(), release.load());
+
+            // Update vowel filter parameters (from MIDI CC)
+            voice->setVowelType(static_cast<VowelFilter::VowelType>(vType));
+            voice->getVowelFilter().setFormantShift(fShift);
+            voice->getVowelFilter().setFormantSpread(fSpread);
+            voice->getVowelFilter().setBandwidthScale(bwScale);
+            voice->getVowelFilter().setResonanceGain(resGain);
+            voice->getVowelFilter().setHarmonicAlignment(harmonicAlign.load() > 0.5f);
         }
     }
     
     for (const juce::MidiMessageMetadata metadata : midiMessages)
         if (metadata.numBytes == 3)
             juce::Logger::writeToLog ("TimeStamp: " + juce::String (metadata.getMessage().getTimeStamp()));
-    midiProcessor.process(midiMessages);
+
     iso.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
 }
 
@@ -251,9 +275,28 @@ juce::AudioProcessorValueTreeState::ParameterLayout ISODRONEAudioProcessor::crea
     params.push_back(std::make_unique<juce::AudioParameterFloat> ("BREATHINESS", "Breathiness", juce::NormalisableRange<float> {0.0f, 1.0f}, 0.1f));
     params.push_back(std::make_unique<juce::AudioParameterFloat> ("TENSENESS", "Tenseness", juce::NormalisableRange<float> {0.0f, 1.0f}, 0.8f));
 
-    //Filter
+    // Legacy filter parameters (you might want to remove these if not using)
     params.push_back (std::make_unique<juce::AudioParameterChoice> ("FILTERTYPE", "Filter Type", juce::StringArray { "Low-Pass", "Band-Pass", "High-Pass" }, 0));
     params.push_back(std::make_unique<juce::AudioParameterFloat> ("FILTERCUTOFF", "Filter Cutoff", juce::NormalisableRange<float> {20.0f, 20000.0f, 0.1f, 0.6f}, 200.0f));
     params.push_back(std::make_unique<juce::AudioParameterFloat> ("FILTERRES", "Filter Resonance", juce::NormalisableRange<float> {1.0f, 10.0f, 0.1f}, 1.0f));
+
+    // Vowel filter parameters
+    params.push_back(std::make_unique<juce::AudioParameterChoice>("VOWELTYPE", "Vowel Type", 
+        juce::StringArray{"A", "E", "I", "O", "U"}, 1)); // Default to E
+
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("FORMANTSHIFT", "Formant Shift", 
+        juce::NormalisableRange<float>{0.5f, 2.0f}, 1.0f));
+
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("FORMANTSPREAD", "Formant Spread", 
+        juce::NormalisableRange<float>{0.5f, 2.0f}, 1.0f));
+
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("BANDWIDTHSCALE", "Bandwidth Scale", 
+        juce::NormalisableRange<float>{0.5f, 3.0f}, 1.0f));
+
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("RESONANCEGAIN", "Resonance Gain", 
+        juce::NormalisableRange<float>{0.1f, 2.0f}, 1.0f));
+
+    params.push_back(std::make_unique<juce::AudioParameterBool>("HARMONICALIGN", "Harmonic Alignment", false));
+
     return { params.begin(), params.end() };
 }
