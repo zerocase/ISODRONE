@@ -1,160 +1,199 @@
 /*
  ==============================================================================
- MidiProcessor.cpp
- Created: 19 Aug 2025 4:45:40pm
- Author: zerocase
+ MidiProcessor.cpp - CORRECTED
+ Single-pass MIDI processing
  ==============================================================================
 */
 #include "MidiProcessor.h"
 
 void MidiProcessor::process(juce::MidiBuffer& midiMessages)
 {
-    // Handle CC messages from encoders
-    for (const juce::MidiMessageMetadata metadata : midiMessages)
+    // If Scala file is loaded, we need to process notes differently
+    if (scalaFileLoaded)
     {
-        auto message = metadata.getMessage();
+        juce::MidiBuffer processedMessages;
         
-        if (message.isController())
-        {
-            int cc = message.getControllerNumber();
-            int val = message.getControllerValue();
-            
-            switch (cc)
-            {
-                // Oscillator page (CC 20-23)
-                case 20: 
-                    openQuotient = ccToRange(val, 0.3f, 0.7f);
-                    if (apvts) apvts->getParameter("OPENQUOT")->setValueNotifyingHost(val / 127.0f);
-                    DBG("CC20 OpenQuotient: " + juce::String(openQuotient.load()));
-                    break;
-                case 21: 
-                    asymmetry = ccToRange(val, 0.1f, 2.0f);
-                    if (apvts) apvts->getParameter("ASYMMETRY")->setValueNotifyingHost(val / 127.0f);
-                    DBG("CC21 Asymmetry: " + juce::String(asymmetry.load()));
-                    break;
-                case 22: 
-                    breathiness = ccToRange(val, 0.0f, 1.0f);
-                    if (apvts) apvts->getParameter("BREATHINESS")->setValueNotifyingHost(val / 127.0f);
-                    DBG("CC22 Breathiness: " + juce::String(breathiness.load()));
-                    break;
-                case 23: 
-                    tenseness = ccToRange(val, 0.0f, 1.0f);
-                    if (apvts) apvts->getParameter("TENSENESS")->setValueNotifyingHost(val / 127.0f);
-                    DBG("CC23 Tenseness: " + juce::String(tenseness.load()));
-                    break;
-                
-                // Vowel page (CC 30-34)
-                case 30: 
-                    formantShift = ccToRange(val, 0.5f, 2.0f);
-                    if (apvts) apvts->getParameter("FORMANTSHIFT")->setValueNotifyingHost(val / 127.0f);
-                    DBG("CC30 FormantShift: " + juce::String(formantShift.load()));
-                    break;
-                case 31: 
-                    formantSpread = ccToRange(val, 0.5f, 2.0f);
-                    if (apvts) apvts->getParameter("FORMANTSPREAD")->setValueNotifyingHost(val / 127.0f);
-                    DBG("CC31 FormantSpread: " + juce::String(formantSpread.load()));
-                    break;
-                case 32: 
-                    bandwidthScale = ccToRange(val, 0.5f, 3.0f);
-                    if (apvts) apvts->getParameter("BANDWIDTHSCALE")->setValueNotifyingHost(val / 127.0f);
-                    DBG("CC32 BandwidthScale: " + juce::String(bandwidthScale.load()));
-                    break;
-                case 33: 
-                    resonanceGain = ccToRange(val, 0.1f, 2.0f);
-                    if (apvts) apvts->getParameter("RESONANCEGAIN")->setValueNotifyingHost(val / 127.0f);
-                    DBG("CC33 ResonanceGain: " + juce::String(resonanceGain.load()));
-                    break;
-                case 34: 
-                    vowelType = val / 26;
-                    if (apvts) apvts->getParameter("VOWELTYPE")->setValueNotifyingHost(val / 127.0f);
-                    DBG("CC34 VowelType: " + juce::String(vowelType.load()));
-                    break;
-                
-                // Page indicator (CC 119)
-                case 119: 
-                    currentPage = val; 
-                    DBG("Page changed to: " + juce::String(val == 0 ? "OSCILLATOR" : "VOWEL"));
-                    break;
-            }
-        }
-    }
-    
-
-
-    if (!scalaFileLoaded)
-    {
-        // No Scala file loaded, just log and pass through unchanged
         for (const juce::MidiMessageMetadata metadata : midiMessages)
         {
             auto message = metadata.getMessage();
-            DBG(message.getDescription());
-        }
-        return;
-    }
-    
-    // Create a new buffer for modified messages
-    juce::MidiBuffer processedMessages;
-    
-    for (const juce::MidiMessageMetadata metadata : midiMessages)
-    {
-        auto message = metadata.getMessage();
-        DBG(message.getDescription());
-        
-        if (message.isNoteOn() || message.isNoteOff())
-        {
-            int originalMidiNote = message.getNoteNumber();
-            double targetFrequency = midiNoteToFrequency(originalMidiNote);
             
-            // Find the closest MIDI note to this frequency
-            int closestMidiNote = frequencyToClosestMidiNote(targetFrequency);
-            
-            // Calculate pitch bend needed to reach exact frequency
-            int pitchBendValue = calculatePitchBendForFrequency(closestMidiNote, targetFrequency);
-            
-            DBG("MIDI note " + juce::String(originalMidiNote) + 
-                " -> Target freq: " + juce::String(targetFrequency, 2) + "Hz" +
-                " -> Closest note: " + juce::String(closestMidiNote) + 
-                " -> Pitch bend: " + juce::String(pitchBendValue));
-            
-            // Add pitch bend message first (if needed)
-            if (pitchBendValue != 8192) // 8192 is center/no bend
+            // Handle CC messages
+            if (message.isController())
             {
-                auto pitchBendMsg = juce::MidiMessage::pitchWheel(message.getChannel(), pitchBendValue);
-                pitchBendMsg.setTimeStamp(metadata.samplePosition);
-                processedMessages.addEvent(pitchBendMsg, metadata.samplePosition);
+                handleControlChange(message);
+                // Pass through CC messages unchanged
+                processedMessages.addEvent(message, metadata.samplePosition);
             }
-            
-            // Create modified note message with closest MIDI note
-            juce::MidiMessage modifiedMessage;
-            if (message.isNoteOn())
+            // Handle Note On/Off with Scala processing
+            else if (message.isNoteOn() || message.isNoteOff())
             {
-                modifiedMessage = juce::MidiMessage::noteOn(message.getChannel(), 
-                                                          closestMidiNote, 
-                                                          message.getVelocity());
+                // Track gesture notes
+                if (message.isNoteOn())
+                {
+                    gestureNoteActive = true;
+                    currentGestureNote = message.getNoteNumber();
+                    DBG("Gesture Note ON: " + juce::String(currentGestureNote));
+                }
+                else if (message.isNoteOff())
+                {
+                    gestureNoteActive = false;
+                    DBG("Gesture Note OFF: " + juce::String(message.getNoteNumber()));
+                }
+                
+                // Scala processing
+                int originalMidiNote = message.getNoteNumber();
+                double targetFrequency = midiNoteToFrequency(originalMidiNote);
+                int closestMidiNote = frequencyToClosestMidiNote(targetFrequency);
+                int pitchBendValue = calculatePitchBendForFrequency(closestMidiNote, targetFrequency);
+                
+                // Add pitch bend if needed
+                if (pitchBendValue != 8192)
+                {
+                    auto pitchBendMsg = juce::MidiMessage::pitchWheel(message.getChannel(), pitchBendValue);
+                    pitchBendMsg.setTimeStamp(metadata.samplePosition);
+                    processedMessages.addEvent(pitchBendMsg, metadata.samplePosition);
+                }
+                
+                // Add modified note
+                juce::MidiMessage modifiedMessage;
+                if (message.isNoteOn())
+                {
+                    modifiedMessage = juce::MidiMessage::noteOn(message.getChannel(), 
+                                                              closestMidiNote, 
+                                                              message.getVelocity());
+                }
+                else
+                {
+                    modifiedMessage = juce::MidiMessage::noteOff(message.getChannel(), 
+                                                               closestMidiNote, 
+                                                               message.getVelocity());
+                }
+                modifiedMessage.setTimeStamp(metadata.samplePosition);
+                processedMessages.addEvent(modifiedMessage, metadata.samplePosition);
             }
             else
             {
-                modifiedMessage = juce::MidiMessage::noteOff(message.getChannel(), 
-                                                           closestMidiNote, 
-                                                           message.getVelocity());
+                // Pass through other messages
+                processedMessages.addEvent(message, metadata.samplePosition);
             }
-            modifiedMessage.setTimeStamp(metadata.samplePosition);
-            processedMessages.addEvent(modifiedMessage, metadata.samplePosition);
         }
-        else
-        {
-            // Pass through other MIDI messages unchanged
-            processedMessages.addEvent(message, metadata.samplePosition);
-        }
+        
+        // Replace buffer
+        midiMessages = processedMessages;
     }
+    else
+    {
+        // No Scala file - just process CCs and notes normally
+        for (const juce::MidiMessageMetadata metadata : midiMessages)
+        {
+            auto message = metadata.getMessage();
+            
+            if (message.isController())
+            {
+                handleControlChange(message);
+            }
+            else if (message.isNoteOn())
+            {
+                gestureNoteActive = true;
+                currentGestureNote = message.getNoteNumber();
+                DBG("Gesture Note ON: " + juce::String(currentGestureNote));
+            }
+            else if (message.isNoteOff())
+            {
+                gestureNoteActive = false;
+                DBG("Gesture Note OFF: " + juce::String(message.getNoteNumber()));
+            }
+        }
+        // Messages pass through unchanged
+    }
+}
+
+// NEW: Separate CC handling function
+void MidiProcessor::handleControlChange(const juce::MidiMessage& message)
+{
+    int cc = message.getControllerNumber();
+    int val = message.getControllerValue();
     
-    // Replace the original buffer with our processed one
-    midiMessages = processedMessages;
+    switch (cc)
+    {
+        // GLOTTAL PAGE (CC 14-17)
+        case 14: 
+            openQuotient = ccToRange(val, 0.3f, 0.7f);
+            if (apvts) apvts->getParameter("OPENQUOT")->setValueNotifyingHost(val / 127.0f);
+            DBG("CC14 OpenQuotient: " + juce::String(openQuotient.load()));
+            break;
+        case 15: 
+            asymmetry = ccToRange(val, 0.1f, 2.0f);
+            if (apvts) apvts->getParameter("ASYMMETRY")->setValueNotifyingHost(val / 127.0f);
+            DBG("CC15 Asymmetry: " + juce::String(asymmetry.load()));
+            break;
+        case 16: 
+            breathiness = ccToRange(val, 0.0f, 1.0f);
+            if (apvts) apvts->getParameter("BREATHINESS")->setValueNotifyingHost(val / 127.0f);
+            DBG("CC16 Breathiness: " + juce::String(breathiness.load()));
+            break;
+        case 17: 
+            tenseness = ccToRange(val, 0.0f, 1.0f);
+            if (apvts) apvts->getParameter("TENSENESS")->setValueNotifyingHost(val / 127.0f);
+            DBG("CC17 Tenseness: " + juce::String(tenseness.load()));
+            break;
+        
+        // VOWEL PAGE (CC 18-21)
+        case 18: 
+            formantShift = ccToRange(val, 0.5f, 2.0f);
+            if (apvts) apvts->getParameter("FORMANTSHIFT")->setValueNotifyingHost(val / 127.0f);
+            DBG("CC18 FormantShift: " + juce::String(formantShift.load()));
+            break;
+        case 19: 
+            formantSpread = ccToRange(val, 0.5f, 2.0f);
+            if (apvts) apvts->getParameter("FORMANTSPREAD")->setValueNotifyingHost(val / 127.0f);
+            DBG("CC19 FormantSpread: " + juce::String(formantSpread.load()));
+            break;
+        case 20: 
+            bandwidthScale = ccToRange(val, 0.5f, 3.0f);
+            if (apvts) apvts->getParameter("BANDWIDTHSCALE")->setValueNotifyingHost(val / 127.0f);
+            DBG("CC20 BandwidthScale: " + juce::String(bandwidthScale.load()));
+            break;
+        case 21: 
+            resonanceGain = ccToRange(val, 0.1f, 2.0f);
+            if (apvts) apvts->getParameter("RESONANCEGAIN")->setValueNotifyingHost(val / 127.0f);
+            DBG("CC21 ResonanceGain: " + juce::String(resonanceGain.load()));
+            break;
+        
+        // GESTURE CONTROL - Vowel Morph (CC 11 - Expression)
+        case 11: {
+            // Map CC value (0-127) to vowel morph range (0.0-4.0)
+            float vowelMorphValue = ccToRange(val, 0.0f, 4.0f);
+            vowelMorph = vowelMorphValue;
+            
+            if (apvts) {
+                auto* param = apvts->getParameter("VOWELMORPH");
+                if (param) {
+                    // Convert vowelMorphValue to normalized 0-1 range for the parameter
+                    float normalized = vowelMorphValue / 4.0f;
+                    param->setValueNotifyingHost(normalized);
+                }
+            }
+            
+            // Debug with vowel name
+            const char* vowels[] = {"A", "E", "I", "O", "U"};
+            int vowelIndex = static_cast<int>(vowelMorphValue);
+            vowelIndex = juce::jlimit(0, 4, vowelIndex);
+            DBG("CC11 Gesture -> VowelMorph: " + juce::String(vowelMorphValue, 2) + 
+                " (" + juce::String(vowels[vowelIndex]) + ")");
+            break;
+        }
+        
+        // Page indicator (CC 119)
+        case 119: 
+            currentPage = val; 
+            DBG("Page changed to: " + juce::String(val == 0 ? "GLOTTAL" : "VOWEL"));
+            break;
+    }
 }
 
 int MidiProcessor::frequencyToClosestMidiNote(double frequency)
 {
-    // Convert frequency back to closest MIDI note number
     return juce::roundToInt(69.0 + 12.0 * std::log2(frequency / 440.0));
 }
 
@@ -163,12 +202,9 @@ int MidiProcessor::calculatePitchBendForFrequency(int midiNote, double targetFre
     double midiNoteFreq = juce::MidiMessage::getMidiNoteInHertz(midiNote);
     double cents = 1200.0 * std::log2(targetFrequency / midiNoteFreq);
     
-    // Convert cents to pitch bend value (assuming ±2 semitone range = ±200 cents)
-    // Pitch bend range: 0-16383, center is 8192
-    double bendRange = 200.0; // ±200 cents (2 semitones)
+    double bendRange = 200.0;
     int pitchBendValue = 8192 + juce::roundToInt((cents / bendRange) * 8191.0);
     
-    // Clamp to valid range
     return juce::jlimit(0, 16383, pitchBendValue);
 }
 
@@ -268,13 +304,11 @@ double MidiProcessor::midiNoteToFrequency(int midiNote)
 {
     if (!scalaFileLoaded)
     {
-        // Fall back to 12-TET
         return 440.0 * std::pow(2.0, (midiNote - 69) / 12.0);
     }
     
-    // Simple Scala conversion for now
     double referenceFreq = 440.0;
-    int middleNote = 60; // C4
+    int middleNote = 60;
     
     int noteOffset = midiNote - middleNote;
     int scaleLength = static_cast<int>(currentScale.get_scale_length()) - 1;
@@ -290,7 +324,7 @@ double MidiProcessor::midiNoteToFrequency(int midiNote)
         octaves--;
     }
     
-    double ratio = currentScale.get_ratio(scaleDegree + 1); // +1 because index 0 is 1/1
+    double ratio = currentScale.get_ratio(scaleDegree + 1);
     ratio *= std::pow(2.0, octaves);
     
     return referenceFreq * ratio;
