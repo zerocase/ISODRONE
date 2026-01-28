@@ -173,47 +173,46 @@ void ISODRONEAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         lastOscChoice = currentOscChoice;
     }
 
-    // Use MIDI CC values (from encoders) for glottal params
-    float oq = midiProcessor.openQuotient.load();
-    float asym = midiProcessor.asymmetry.load();
-    float breath = midiProcessor.breathiness.load();
-    float tense = midiProcessor.tenseness.load();
-
-    // ADSR still from GUI
+    // ADSR from GUI
     auto& attack = *apvts.getRawParameterValue("ATTACK");
     auto& decay = *apvts.getRawParameterValue("DECAY");
     auto& sustain = *apvts.getRawParameterValue("SUSTAIN");
     auto& release = *apvts.getRawParameterValue("RELEASE");
 
-    // Use MIDI CC values (from encoders) for vowel params
-    float fShift = midiProcessor.formantShift.load();
-    float fSpread = midiProcessor.formantSpread.load();
-    float bwScale = midiProcessor.bandwidthScale.load();
-    float resGain = midiProcessor.resonanceGain.load();
-    int vType = midiProcessor.vowelType.load();
-    
-    // Harmonic align still from GUI
+    // Glottal params from GUI (CHANGED - was from midiProcessor)
+    auto& oq = *apvts.getRawParameterValue("OPENQUOT");
+    auto& asym = *apvts.getRawParameterValue("ASYMMETRY");
+    auto& breath = *apvts.getRawParameterValue("BREATHINESS");
+    auto& tense = *apvts.getRawParameterValue("TENSENESS");
+
+    // Vowel params from GUI (CHANGED - was from midiProcessor)
+    auto& fShift = *apvts.getRawParameterValue("FORMANTSHIFT");
+    auto& fSpread = *apvts.getRawParameterValue("FORMANTSPREAD");
+    auto& bwScale = *apvts.getRawParameterValue("BANDWIDTHSCALE");
+    auto& resGain = *apvts.getRawParameterValue("RESONANCEGAIN");
+    auto& vowelMorph = *apvts.getRawParameterValue("VOWELMORPH");
+
     auto& harmonicAlign = *apvts.getRawParameterValue("HARMONICALIGN");
 
     for (int i = 0; i < iso.getNumVoices(); ++i)
     {
         if (auto voice = dynamic_cast<IsoVoice*>(iso.getVoice(i)))
         {
-            // Set oscillator type
+            // Set oscillator type (CORRECTED - using getOscillator())
             voice->getOscillator().setWaveType(currentOscChoice);
             
-            // Set glottal parameters (from MIDI CC)
-            voice->setGlottalParams(oq, asym, breath, tense);
+            // Set glottal parameters (now from GUI)
+            voice->setGlottalParams(oq.load(), asym.load(), breath.load(), tense.load());
             
             // Update ADSR
             voice->update(attack.load(), decay.load(), sustain.load(), release.load());
 
-            // Update vowel filter parameters (from MIDI CC)
-            voice->setVowelType(static_cast<VowelFilter::VowelType>(vType));
-            voice->getVowelFilter().setFormantShift(fShift);
-            voice->getVowelFilter().setFormantSpread(fSpread);
-            voice->getVowelFilter().setBandwidthScale(bwScale);
-            voice->getVowelFilter().setResonanceGain(resGain);
+            // Update vowel filter parameters (now from GUI)
+            voice->getVowelFilter().setVowelMorph(vowelMorph.load());
+            voice->getVowelFilter().setFormantShift(fShift.load());
+            voice->getVowelFilter().setFormantSpread(fSpread.load());
+            voice->getVowelFilter().setBandwidthScale(bwScale.load());
+            voice->getVowelFilter().setResonanceGain(resGain.load());
             voice->getVowelFilter().setHarmonicAlignment(harmonicAlign.load() > 0.5f);
         }
     }
@@ -281,8 +280,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout ISODRONEAudioProcessor::crea
     params.push_back(std::make_unique<juce::AudioParameterFloat> ("FILTERRES", "Filter Resonance", juce::NormalisableRange<float> {1.0f, 10.0f, 0.1f}, 1.0f));
 
     // Vowel filter parameters
-    params.push_back(std::make_unique<juce::AudioParameterChoice>("VOWELTYPE", "Vowel Type", 
-        juce::StringArray{"A", "E", "I", "O", "U"}, 1)); // Default to E
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("VOWELMORPH", "Vowel Morph", 
+    juce::NormalisableRange<float>{0.0f, 4.0f}, 1.0f)); // 0=A, 1=E, 2=I, 3=O, 4=UE
 
     params.push_back(std::make_unique<juce::AudioParameterFloat>("FORMANTSHIFT", "Formant Shift", 
         juce::NormalisableRange<float>{0.5f, 2.0f}, 1.0f));

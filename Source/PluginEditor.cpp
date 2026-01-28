@@ -13,7 +13,7 @@
 ISODRONEAudioProcessorEditor::ISODRONEAudioProcessorEditor(ISODRONEAudioProcessor& p)
     : AudioProcessorEditor(&p), audioProcessor(p), osc(audioProcessor.apvts, "OSC1WAVETYPE"), adsr(audioProcessor.apvts)
 {
-    setSize(450, 950); // More width and height for better spacing
+    setSize(450, 990); // Increased from 950 to 990 for more space
     
     // Create parameter attachments and setup custom value display
     openQuotientAttachment = std::make_unique<SliderAttachment>(audioProcessor.apvts, "OPENQUOT", openQuotientKnob);
@@ -21,7 +21,7 @@ ISODRONEAudioProcessorEditor::ISODRONEAudioProcessorEditor(ISODRONEAudioProcesso
     breathinessAttachment = std::make_unique<SliderAttachment>(audioProcessor.apvts, "BREATHINESS", breathinessKnob);
     tensenessAttachment = std::make_unique<SliderAttachment>(audioProcessor.apvts, "TENSENESS", tensenessKnob);
     
-    vowelAttachment = std::make_unique<ComboBoxAttachment>(audioProcessor.apvts, "VOWELTYPE", vowelSelector);
+    vowelMorphAttachment = std::make_unique<SliderAttachment>(audioProcessor.apvts, "VOWELMORPH", vowelMorphSlider);
     formantShiftAttachment = std::make_unique<SliderAttachment>(audioProcessor.apvts, "FORMANTSHIFT", formantShiftKnob);
     formantSpreadAttachment = std::make_unique<SliderAttachment>(audioProcessor.apvts, "FORMANTSPREAD", formantSpreadKnob);
     bandwidthAttachment = std::make_unique<SliderAttachment>(audioProcessor.apvts, "BANDWIDTHSCALE", bandwidthKnob);
@@ -63,6 +63,20 @@ ISODRONEAudioProcessorEditor::ISODRONEAudioProcessorEditor(ISODRONEAudioProcesso
     setupLabel(breathinessLabel, "Breathiness", breathinessKnob);
     setupLabel(tensenessLabel, "Tenseness", tensenessKnob);
 
+    // Setup vowel morph slider (horizontal, not rotary) - MUST BE BEFORE OTHER VOWEL KNOBS
+    vowelMorphSlider.setName("VOWELMORPH");
+    vowelMorphSlider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
+    vowelMorphSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 60, 20);
+    vowelMorphSlider.setColour(juce::Slider::trackColourId, juce::Colour(0xff4a9eff));
+    vowelMorphSlider.setColour(juce::Slider::backgroundColourId, juce::Colour(0xff333333));
+    vowelMorphSlider.setColour(juce::Slider::textBoxTextColourId, juce::Colours::white);
+    vowelMorphSlider.setColour(juce::Slider::textBoxBackgroundColourId, juce::Colour(0x00000000));
+    vowelMorphSlider.setColour(juce::Slider::textBoxOutlineColourId, juce::Colour(0x00000000));
+    setupKnobValueDisplay(vowelMorphSlider, "VOWELMORPH");
+    addAndMakeVisible(vowelMorphSlider);
+    
+    setupLabel(vowelLabel, "Vowel", vowelMorphSlider);
+
     // Setup vowel filter knobs and labels
     formantShiftKnob.setName("FORMANTSHIFT");
     formantSpreadKnob.setName("FORMANTSPREAD");
@@ -78,16 +92,6 @@ ISODRONEAudioProcessorEditor::ISODRONEAudioProcessorEditor(ISODRONEAudioProcesso
     setupLabel(formantSpreadLabel, "Formant\nSpread", formantSpreadKnob);
     setupLabel(bandwidthLabel, "Bandwidth", bandwidthKnob);
     setupLabel(resonanceLabel, "Resonance", resonanceKnob);
-
-    // Setup vowel selector
-    vowelSelector.addItem("A", 1);
-    vowelSelector.addItem("E", 2);
-    vowelSelector.addItem("I", 3);
-    vowelSelector.addItem("O", 4);
-    vowelSelector.addItem("U", 5);
-    addAndMakeVisible(vowelSelector);
-
-    setupLabel(vowelLabel, "Vowel", vowelSelector);
 
     // Setup harmonic alignment button
     harmonicAlignmentButton.setButtonText("Harmonic\nAlignment");
@@ -166,7 +170,7 @@ void ISODRONEAudioProcessorEditor::resized()
     bounds.removeFromTop(15); // Bigger gap
     
     // 4. VOWEL FILTER SECTION (2x2 knobs + controls)
-    auto vowelArea = bounds.removeFromTop(260); // Taller
+    auto vowelArea = bounds.removeFromTop(300); // Increased from 260 to 300
     sectionBounds.add(vowelArea);
     layoutVowelSection(vowelArea);
     
@@ -248,19 +252,15 @@ void ISODRONEAudioProcessorEditor::layoutVowelSection(juce::Rectangle<int> area)
     
     content.removeFromTop(10); // More space after label
     
-    // Vowel controls row using FlexBox (more compact)
-    auto controlsArea = content.removeFromTop(35); // Taller controls area
-    juce::FlexBox controlsRow;
-    controlsRow.flexDirection = juce::FlexBox::Direction::row;
-    controlsRow.justifyContent = juce::FlexBox::JustifyContent::flexStart;
-    controlsRow.alignItems = juce::FlexBox::AlignItems::center;
+    // Vowel morph slider (full width on top)
+    auto vowelMorphArea = content.removeFromTop(30);
+    vowelMorphSlider.setBounds(vowelMorphArea);
     
-    controlsRow.items.add(juce::FlexItem(vowelLabel).withWidth(60).withHeight(30)); // Bigger
-    controlsRow.items.add(juce::FlexItem(vowelSelector).withWidth(80).withHeight(30)); // Bigger
-    controlsRow.items.add(juce::FlexItem().withWidth(15)); // Bigger gap
-    controlsRow.items.add(juce::FlexItem(harmonicAlignmentButton).withFlex(1).withHeight(30));
+    content.removeFromTop(8); // Small gap
     
-    controlsRow.performLayout(controlsArea);
+    // Harmonic alignment button (full width below slider)
+    auto harmonicAlignArea = content.removeFromTop(30);
+    harmonicAlignmentButton.setBounds(harmonicAlignArea);
     
     content.removeFromTop(15); // More space before knobs
     
@@ -360,6 +360,28 @@ void ISODRONEAudioProcessorEditor::setupKnobValueDisplay(juce::Slider& knob, con
             else
                 return juce::String(dB, 1) + " dB";
         }
+        else if (parameterID == "VOWELMORPH")
+        {
+            // Display vowel name with morphing indicator
+            const char* vowels[] = {"A", "E", "I", "O", "U"};
+            int baseVowel = static_cast<int>(std::floor(value));
+            baseVowel = juce::jlimit(0, 4, baseVowel);
+            
+            double blend = value - std::floor(value);
+            
+            if (blend < 0.1)
+                return juce::String(vowels[baseVowel]);
+            else if (blend > 0.9)
+            {
+                int nextVowel = juce::jlimit(0, 4, baseVowel + 1);
+                return juce::String(vowels[nextVowel]);
+            }
+            else
+            {
+                int nextVowel = juce::jlimit(0, 4, baseVowel + 1);
+                return juce::String(vowels[baseVowel]) + "-" + juce::String(vowels[nextVowel]);
+            }
+        }
         else
         {
             // Default: clean decimal
@@ -388,4 +410,3 @@ void ISODRONEAudioProcessorEditor::setupSectionLabel(juce::Label& label, const j
     label.setColour(juce::Label::textColourId, juce::Colour(0xff4a9eff));
     addAndMakeVisible(label);
 }
-

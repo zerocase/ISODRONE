@@ -27,7 +27,7 @@ const VowelFilter::FormantData VowelFilter::vowelFormants[NumVowels] = {
 VowelFilter::VowelFilter()
     : sampleRate(44100.0)
     , numChannels(2)
-    , currentVowel(E)
+    , vowelMorphValue(1.0f)  // Start at E vowel
     , currentFundamental(220.0f)
     , referenceFundamental(220.0f)
     , formantShift(1.0f)
@@ -154,6 +154,23 @@ void VowelFilter::setVowelType(VowelType vowel)
     if (currentVowel != vowel)
     {
         currentVowel = vowel;
+        vowelMorphValue = static_cast<float>(vowel);
+        updateFilters();
+    }
+}
+
+void VowelFilter::setVowelMorph(float morphValue)
+{
+    // Clamp to valid range
+    morphValue = juce::jlimit(0.0f, static_cast<float>(NumVowels - 1), morphValue);
+    
+    if (std::abs(vowelMorphValue - morphValue) > 0.01f)
+    {
+        vowelMorphValue = morphValue;
+        
+        // Update currentVowel to nearest vowel for reference
+        currentVowel = static_cast<VowelType>(juce::roundToInt(morphValue));
+        
         updateFilters();
     }
 }
@@ -257,9 +274,45 @@ float VowelFilter::applyFormantAdjustments(float baseFrequency, int formantIndex
     return adjustedFreq;
 }
 
+// NEW: Interpolate between vowel formants
+VowelFilter::FormantData VowelFilter::interpolateFormants(float morphValue)
+{
+    // Get the two vowels to interpolate between
+    int vowel1 = static_cast<int>(std::floor(morphValue));
+    int vowel2 = static_cast<int>(std::ceil(morphValue));
+    
+    // Clamp to valid range
+    vowel1 = juce::jlimit(0, NumVowels - 1, vowel1);
+    vowel2 = juce::jlimit(0, NumVowels - 1, vowel2);
+    
+    // Calculate interpolation factor (0.0 = vowel1, 1.0 = vowel2)
+    float blend = morphValue - std::floor(morphValue);
+    
+    // Get formant data for both vowels
+    const FormantData& formantA = vowelFormants[vowel1];
+    const FormantData& formantB = vowelFormants[vowel2];
+    
+    // Interpolate all formant parameters
+    FormantData result;
+    result.f1 = formantA.f1 + blend * (formantB.f1 - formantA.f1);
+    result.f2 = formantA.f2 + blend * (formantB.f2 - formantA.f2);
+    result.f3 = formantA.f3 + blend * (formantB.f3 - formantA.f3);
+    
+    result.bw1 = formantA.bw1 + blend * (formantB.bw1 - formantA.bw1);
+    result.bw2 = formantA.bw2 + blend * (formantB.bw2 - formantA.bw2);
+    result.bw3 = formantA.bw3 + blend * (formantB.bw3 - formantA.bw3);
+    
+    result.gain1 = formantA.gain1 + blend * (formantB.gain1 - formantA.gain1);
+    result.gain2 = formantA.gain2 + blend * (formantB.gain2 - formantA.gain2);
+    result.gain3 = formantA.gain3 + blend * (formantB.gain3 - formantA.gain3);
+    
+    return result;
+}
+
 void VowelFilter::updateFilters()
 {
-    const FormantData& formant = vowelFormants[currentVowel];
+    // Get interpolated formant data based on morphValue
+    const FormantData formant = interpolateFormants(vowelMorphValue);
     
     // Update each formant filter for all channels
     for (int channel = 0; channel < static_cast<int>(formant1Filters.size()); ++channel)

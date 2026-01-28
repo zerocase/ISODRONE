@@ -1,13 +1,10 @@
 /*
   ==============================================================================
-
     VowelFilter.h
     Created: 8 Aug 2025 3:01:11pm
     Author:  zerocase
-
   ==============================================================================
 */
-
 #pragma once
 #include <JuceHeader.h>
 
@@ -26,14 +23,15 @@ public:
 
     VowelFilter();
     ~VowelFilter();
-
+    
     // Setup and processing
     void prepareToPlay(double sampleRate, int samplesPerBlock);
     void process(juce::AudioBuffer<float>& buffer);
     void reset();
-
+    
     // Main controls
     void setVowelType(VowelType vowel);
+    void setVowelMorph(float morphValue);  // 0.0-4.0 for smooth vowel transitions
     void setFundamentalFrequency(float frequency);
     
     // Additional filter controls
@@ -45,6 +43,7 @@ public:
     
     // Parameter getters
     VowelType getVowelType() const { return currentVowel; }
+    float getVowelMorph() const { return vowelMorphValue; }
     float getFundamentalFrequency() const { return currentFundamental; }
     float getFormantShift() const { return formantShift; }
     float getFormantSpread() const { return formantSpread; }
@@ -59,37 +58,39 @@ private:
         float bw1, bw2, bw3;        // Bandwidths (Hz)
         float gain1, gain2, gain3;  // Gains (linear)
     };
-
+    
     // Formant data for each vowel
     static const FormantData vowelFormants[NumVowels];
-
+    
     // Filter bank - 3 formants per channel
     std::vector<std::unique_ptr<juce::IIRFilter>> formant1Filters;
     std::vector<std::unique_ptr<juce::IIRFilter>> formant2Filters;
     std::vector<std::unique_ptr<juce::IIRFilter>> formant3Filters;
-
+    
     // Processing buffers
     juce::AudioBuffer<float> tempBuffer;
-
+    
     // Audio parameters
     double sampleRate;
     int numChannels;
-
+    
     // Core vowel parameters
     VowelType currentVowel;
+    float vowelMorphValue;          // Continuous vowel parameter (0.0 - 4.0)
     float currentFundamental;
     float referenceFundamental;     // Reference pitch for scaling (220Hz)
-
+    
     // Advanced formant controls
     float formantShift;             // Global formant frequency scaling
     float formantSpread;            // Formant frequency spreading
     float bandwidthScale;           // Bandwidth scaling factor
     float resonanceGain;            // Overall formant gain
     bool harmonicAlignment;         // Snap formants to harmonics
-
+    
     // Internal methods
     void updateFilters();
     void createBandpassFilter(juce::IIRFilter* filter, float frequency, float bandwidth, float gain);
     float findNearestHarmonic(float formantFreq, float fundamental);
     float applyFormantAdjustments(float baseFrequency, int formantIndex);
+    FormantData interpolateFormants(float morphValue);  // NEW: Interpolate between vowels
 };
