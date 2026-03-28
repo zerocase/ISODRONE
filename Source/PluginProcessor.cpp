@@ -280,8 +280,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout ISODRONEAudioProcessor::crea
     params.push_back(std::make_unique<juce::AudioParameterFloat> ("FILTERRES", "Filter Resonance", juce::NormalisableRange<float> {1.0f, 10.0f, 0.1f}, 1.0f));
 
     // Vowel filter parameters
-    params.push_back(std::make_unique<juce::AudioParameterFloat>("VOWELMORPH", "Vowel Morph", 
-    juce::NormalisableRange<float>{0.0f, 4.0f}, 1.0f)); // 0=A, 1=E, 2=I, 3=O, 4=UE
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+    "VOWELMORPH", "Vowel Morph", 
+    juce::NormalisableRange<float>{0.0f, static_cast<float>(VowelFilter::NumVowels - 1)}, 0.0f));
 
     params.push_back(std::make_unique<juce::AudioParameterFloat>("FORMANTSHIFT", "Formant Shift", 
         juce::NormalisableRange<float>{0.5f, 2.0f}, 1.0f));

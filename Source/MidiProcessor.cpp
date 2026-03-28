@@ -162,28 +162,32 @@ void MidiProcessor::handleControlChange(const juce::MidiMessage& message)
         
         // GESTURE CONTROL - Vowel Morph (CC 11 - Expression)
         case 11: {
-            // Map CC value (0-127) to vowel morph range (0.0-4.0)
-            float vowelMorphValue = ccToRange(val, 0.0f, 4.0f);
+            float vowelMorphValue = ccToRange(val, 0.0f, 6.0f);
             vowelMorph = vowelMorphValue;
             
             if (apvts) {
                 auto* param = apvts->getParameter("VOWELMORPH");
-                if (param) {
-                    // Convert vowelMorphValue to normalized 0-1 range for the parameter
-                    float normalized = vowelMorphValue / 4.0f;
-                    param->setValueNotifyingHost(normalized);
-                }
+                if (param)
+                    param->setValueNotifyingHost(vowelMorphValue / 6.0f);
             }
             
-            // Debug with vowel name
-            const char* vowels[] = {"A", "E", "I", "O", "U"};
-            int vowelIndex = static_cast<int>(vowelMorphValue);
-            vowelIndex = juce::jlimit(0, 4, vowelIndex);
+            // Use juce::String directly to avoid UTF-8 const char* issues
+            const juce::String vowelNames[] = {
+                "A",
+                "E",
+                juce::String::fromUTF8("\xc3\x8b"),  // Ë
+                "I",
+                "O",
+                "U",
+                "Y"
+            };
+            
+            int vowelIndex = juce::jlimit(0, 6, static_cast<int>(vowelMorphValue));
             DBG("CC11 Gesture -> VowelMorph: " + juce::String(vowelMorphValue, 2) + 
-                " (" + juce::String(vowels[vowelIndex]) + ")");
+                " (" + vowelNames[vowelIndex] + ")");
             break;
         }
-        
+                
         // Page indicator (CC 119)
         case 119: 
             currentPage = val; 

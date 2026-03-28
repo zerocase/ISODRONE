@@ -11,13 +11,17 @@
 class VowelFilter
 {
 public:
+
+    //Aä Eɛ Ëə Ii Oɔ Uu Yy 
     enum VowelType
     {
         A = 0,
         E,
+        Es,
         I,
         O,
         U,
+        Y,
         NumVowels
     };
 
@@ -69,7 +73,9 @@ private:
     
     // Processing buffers
     juce::AudioBuffer<float> tempBuffer;
-    
+    juce::AudioBuffer<float> formant1Buffer;
+    juce::AudioBuffer<float> formant2Buffer;
+    juce::AudioBuffer<float> formant3Buffer;    
     // Audio parameters
     double sampleRate;
     int numChannels;

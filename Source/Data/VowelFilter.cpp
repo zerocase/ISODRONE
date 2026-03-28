@@ -16,12 +16,16 @@ const VowelFilter::FormantData VowelFilter::vowelFormants[NumVowels] = {
     { 730.0f, 1090.0f, 2440.0f, 80.0f, 90.0f, 120.0f, 1.5f, 1.0f, 0.5f },
     // E vowel  
     { 530.0f, 1840.0f, 2480.0f, 80.0f, 90.0f, 120.0f, 1.5f, 1.2f, 0.6f },
+    // Ë (schwa)
+    { 450.0f, 1500.0f, 2500.0f, 80.0f, 90.0f, 120.0f, 1.5f, 1.2f, 0.6f },
     // I vowel
     { 270.0f, 2290.0f, 3010.0f, 40.0f, 90.0f, 120.0f, 1.2f, 1.5f, 0.8f },
     // O vowel
     { 570.0f, 840.0f, 2410.0f, 80.0f, 80.0f, 120.0f, 1.5f, 0.8f, 0.5f },
     // U vowel
-    { 440.0f, 1020.0f, 2240.0f, 80.0f, 80.0f, 120.0f, 1.2f, 0.6f, 0.4f }
+    { 440.0f, 1020.0f, 2240.0f, 80.0f, 80.0f, 120.0f, 1.2f, 0.6f, 0.4f },
+    // Y vowel
+    { 320.0f, 1700.0f, 2300.0f, 80.0f, 80.0f, 120.0f, 1.2f, 0.6f, 0.4f }
 };
 
 VowelFilter::VowelFilter()
@@ -65,8 +69,11 @@ void VowelFilter::prepareToPlay(double newSampleRate, int samplesPerBlock)
     // Configure filters with current vowel formants
     updateFilters();
     
-    // Prepare temporary buffer for parallel processing
+    // Pre-allocate ALL processing buffers here, not on the audio thread
     tempBuffer.setSize(numChannels, samplesPerBlock, false, true, true);
+    formant1Buffer.setSize(numChannels, samplesPerBlock, false, true, true);
+    formant2Buffer.setSize(numChannels, samplesPerBlock, false, true, true);
+    formant3Buffer.setSize(numChannels, samplesPerBlock, false, true, true);
 }
 
 void VowelFilter::process(juce::AudioBuffer<float>& buffer)
@@ -76,30 +83,26 @@ void VowelFilter::process(juce::AudioBuffer<float>& buffer)
     
     // Check if there's any input signal to process
     float maxInput = buffer.getMagnitude(0, 0, numSamples);
-    if (maxInput < 1e-6f) {
-        return; // No signal to process, avoid filter artifacts
-    }
+    if (maxInput < 1e-6f)
+        return;
     
-    // Update channel count if needed
-    if (channels != numChannels)
+    // Guard against mismatched channel count — do NOT call prepareToPlay here
+    if (channels > numChannels || 
+        numSamples > formant1Buffer.getNumSamples())
     {
-        numChannels = channels;
-        prepareToPlay(sampleRate, numSamples);
+        jassertfalse; // prepareToPlay was not called correctly
+        return;
     }
     
-    // Ensure temp buffer is the right size
-    tempBuffer.setSize(channels, numSamples, false, false, true);
     tempBuffer.clear();
     
-    // Create temporary arrays for each formant processing
-    juce::AudioBuffer<float> formant1Buffer(channels, numSamples);
-    juce::AudioBuffer<float> formant2Buffer(channels, numSamples);
-    juce::AudioBuffer<float> formant3Buffer(channels, numSamples);
-    
-    // Copy input to each formant buffer
-    formant1Buffer.makeCopyOf(buffer, true);
-    formant2Buffer.makeCopyOf(buffer, true);
-    formant3Buffer.makeCopyOf(buffer, true);
+    // Copy input to each formant buffer (no allocation — reusing pre-allocated buffers)
+    for (int channel = 0; channel < channels; ++channel)
+    {
+        formant1Buffer.copyFrom(channel, 0, buffer, channel, 0, numSamples);
+        formant2Buffer.copyFrom(channel, 0, buffer, channel, 0, numSamples);
+        formant3Buffer.copyFrom(channel, 0, buffer, channel, 0, numSamples);
+    }
     
     // Process each formant buffer
     for (int channel = 0; channel < channels; ++channel)
@@ -112,27 +115,23 @@ void VowelFilter::process(juce::AudioBuffer<float>& buffer)
     // Sum all formant outputs into the temp buffer
     for (int channel = 0; channel < channels; ++channel)
     {
-        auto* outputData = tempBuffer.getWritePointer(channel);
+        auto* outputData  = tempBuffer.getWritePointer(channel);
         auto* formant1Data = formant1Buffer.getReadPointer(channel);
         auto* formant2Data = formant2Buffer.getReadPointer(channel);
         auto* formant3Data = formant3Buffer.getReadPointer(channel);
         
         for (int sample = 0; sample < numSamples; ++sample)
         {
-            // Sum all formant outputs
-            float filteredSample = formant1Data[sample] + formant2Data[sample] + formant3Data[sample];
+            float filteredSample = formant1Data[sample] 
+                                 + formant2Data[sample] 
+                                 + formant3Data[sample];
             
-            // Apply overall gain scaling with resonance control
             filteredSample *= (0.7f * resonanceGain);
-            
-            // Soft clipping for safety
             filteredSample = juce::jlimit(-0.95f, 0.95f, filteredSample);
-            
             outputData[sample] = filteredSample;
         }
     }
     
-    // Copy the filtered result back to the main buffer
     buffer.makeCopyOf(tempBuffer, true);
 }
 

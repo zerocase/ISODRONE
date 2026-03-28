@@ -328,9 +328,9 @@ void ISODRONEAudioProcessorEditor::setupKnobValueDisplay(juce::Slider& knob, con
             // Formant shift in cents (assuming 0.5-2.0 range maps to ±1200 cents)
             double cents = (value - 1.0) * 1200.0;
             if (cents >= 0)
-                return "+" + juce::String(juce::roundToInt(cents)) + "¢";
+                return "+" + juce::String(juce::roundToInt(cents)) + juce::String::fromUTF8("\xc2\xa2"); // ¢
             else
-                return juce::String(juce::roundToInt(cents)) + "¢";
+                return juce::String(juce::roundToInt(cents)) + juce::String::fromUTF8("\xc2\xa2");
         }
         else if (parameterID == "FORMANTSPREAD")
         {
@@ -343,17 +343,15 @@ void ISODRONEAudioProcessorEditor::setupKnobValueDisplay(juce::Slider& knob, con
         }
         else if (parameterID == "BANDWIDTHSCALE")
         {
-            // Bandwidth scaling factor
             if (value > 1.0)
                 return juce::String(value, 1) + "x wide";
             else if (value < 1.0)
                 return juce::String(value, 1) + "x narrow";
             else
-                return "normal";
+                return juce::String("normal");
         }
         else if (parameterID == "RESONANCEGAIN")
         {
-            // Resonance gain in dB
             double dB = 20.0 * std::log10(value);
             if (dB >= 0)
                 return "+" + juce::String(dB, 1) + " dB";
@@ -362,31 +360,29 @@ void ISODRONEAudioProcessorEditor::setupKnobValueDisplay(juce::Slider& knob, con
         }
         else if (parameterID == "VOWELMORPH")
         {
-            // Display vowel name with morphing indicator
-            const char* vowels[] = {"A", "E", "I", "O", "U"};
-            int baseVowel = static_cast<int>(std::floor(value));
-            baseVowel = juce::jlimit(0, 4, baseVowel);
+            const juce::String vowelNames[] = {
+                "A",
+                "E",
+                juce::String::fromUTF8("\xc3\x8b"),  // Ë
+                "I",
+                "O",
+                "U",
+                "Y"
+            };
             
+            int baseVowel = juce::jlimit(0, 6, static_cast<int>(std::floor(value)));
             double blend = value - std::floor(value);
             
             if (blend < 0.1)
-                return juce::String(vowels[baseVowel]);
+                return vowelNames[baseVowel];
             else if (blend > 0.9)
-            {
-                int nextVowel = juce::jlimit(0, 4, baseVowel + 1);
-                return juce::String(vowels[nextVowel]);
-            }
+                return vowelNames[juce::jlimit(0, 6, baseVowel + 1)];
             else
-            {
-                int nextVowel = juce::jlimit(0, 4, baseVowel + 1);
-                return juce::String(vowels[baseVowel]) + "-" + juce::String(vowels[nextVowel]);
-            }
+                return vowelNames[baseVowel] + "-" + vowelNames[juce::jlimit(0, 6, baseVowel + 1)];
         }
-        else
-        {
-            // Default: clean decimal
-            return juce::String(value, 2);
-        }
+        
+        // Default fallback — should never reach here with known parameter IDs
+        return juce::String(value, 2);
     };
     
     knob.updateText();
